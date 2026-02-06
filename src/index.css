@@ -1,0 +1,306 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply min-h-screen font-sans antialiased;
+  }
+  
+  .dark body {
+    @apply bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900 text-white;
+  }
+  
+  .light body {
+    @apply bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 text-slate-900;
+  }
+
+  /* Global scrollbar styling */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.55);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg shadow-primary-600/25 hover:shadow-primary-500/40 active:scale-[0.98];
+  }
+  
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/10 active:scale-[0.98];
+  }
+  
+  .btn-ghost {
+    @apply hover:bg-white/10 text-white/80 hover:text-white font-medium px-4 py-2 rounded-lg transition-all duration-200;
+  }
+  
+  .card {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl shadow-xl;
+  }
+  
+  .card-hover {
+    @apply hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-1;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Markdown стили */
+  .markdown-content {
+    @apply max-w-none;
+  }
+
+  .markdown-content .markdown-h1 {
+    @apply text-3xl font-bold mb-4 mt-6 first:mt-0;
+  }
+
+  .markdown-content .markdown-h2 {
+    @apply text-2xl font-bold mb-3 mt-5 first:mt-0;
+  }
+
+  .markdown-content .markdown-h3 {
+    @apply text-xl font-semibold mb-2 mt-4 first:mt-0;
+  }
+
+  .markdown-content .markdown-p {
+    @apply mb-4 text-justify leading-relaxed;
+  }
+
+  .markdown-content .markdown-bold {
+    @apply font-bold;
+  }
+
+  .markdown-content .markdown-italic {
+    @apply italic;
+  }
+
+  .markdown-content .markdown-ul,
+  .markdown-content .markdown-ol {
+    @apply mb-4 space-y-2 ml-6;
+  }
+
+  .markdown-content .markdown-ul {
+    @apply list-disc;
+  }
+
+  .markdown-content .markdown-ol {
+    @apply list-decimal;
+  }
+
+  .markdown-content .markdown-li {
+    @apply mb-2 leading-relaxed;
+  }
+
+  .markdown-content .markdown-hr {
+    @apply my-6 border-t border-slate-300/20;
+  }
+
+  /* LaTeX формулы */
+  .latex-inline {
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1.6;
+  }
+
+  .latex-block {
+    display: block;
+    my-4: 1rem;
+    text-align: center;
+  }
+
+  .formula-display {
+    padding: 0;
+    line-height: 1.8;
+    overflow-x: auto;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  /* KaTeX стили - оптимальный размер для формул в разделе "Формулы" */
+  .formula-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .formula-display .katex {
+    font-size: 1.2em !important;
+    max-width: 100%;
+  }
+
+  .formula-display .katex-display {
+    margin: 0.5em 0;
+    text-align: center;
+    display: block;
+    max-width: 100%;
+    overflow-x: visible;
+    overflow-y: hidden;
+  }
+
+  /* Адаптивный размер для длинных формул */
+  .formula-display .katex-display .katex {
+    font-size: 1.1em !important;
+    max-width: 100%;
+  }
+
+  /* Инлайн формулы в карточках */
+  .formula-display:not(:has(.katex-display)) .katex,
+  .formula-display .katex:not(.katex-display) {
+    font-size: 1.15em !important;
+    max-width: 100%;
+  }
+
+  /* Автоматическое масштабирование длинных формул */
+  .formula-display .katex-display {
+    transform-origin: center;
+  }
+
+  /* Убираем горизонтальную прокрутку и разрешаем масштабирование */
+  .formula-display {
+    overflow: hidden !important;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .formula-display .katex,
+  .formula-display .katex-display {
+    overflow-x: visible !important;
+    overflow-y: hidden !important;
+    max-width: 100%;
+    width: fit-content;
+  }
+
+  /* Плавное масштабирование */
+  .formula-display .katex-display,
+  .formula-display .katex {
+    transition: transform 0.2s ease;
+  }
+
+  /* Убираем горизонтальную прокрутку для всех элементов KaTeX */
+  .formula-display .katex * {
+    max-width: 100%;
+    overflow-x: visible !important;
+  }
+
+  .latex-block .katex-display {
+    margin: 1em 0;
+    text-align: center;
+  }
+
+  .latex-inline .katex {
+    font-size: 1.1em;
+    display: inline-block;
+  }
+
+  /* Кастомные цвета для KaTeX - наследуют цвет текста, без фона */
+  html.light .katex,
+  html.light .formula-display .katex {
+    color: inherit;
+  }
+
+  html.dark .katex,
+  html.dark .formula-display .katex {
+    color: inherit;
+  }
+
+  /* Убираем фон для формул */
+  html.light .latex-inline,
+  .light .latex-inline,
+  html.light .latex-block,
+  .light .latex-block,
+  html.light .formula-display,
+  .light .formula-display {
+    background: transparent !important;
+    border: none !important;
+    color: inherit;
+  }
+
+  html.dark .latex-inline,
+  .dark .latex-inline,
+  html.dark .latex-block,
+  .dark .latex-block,
+  html.dark .formula-display,
+  .dark .formula-display {
+    background: transparent !important;
+    border: none !important;
+    color: inherit;
+  }
+
+  .formula-display sub,
+  .latex-inline sub,
+  .latex-block sub {
+    @apply text-sm;
+    vertical-align: sub;
+    font-size: 0.75em;
+  }
+
+  .formula-display sup,
+  .latex-inline sup,
+  .latex-block sup {
+    @apply text-sm;
+    vertical-align: super;
+    font-size: 0.75em;
+  }
+
+  /* Улучшенные стили для математических символов */
+  .latex-inline,
+  .latex-block,
+  .formula-display {
+    font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  }
+
+  .latex-inline sub,
+  .latex-block sub,
+  .formula-display sub {
+    margin-left: 0.1em;
+  }
+
+  .latex-inline sup,
+  .latex-block sup,
+  .formula-display sup {
+    margin-left: 0.1em;
+  }
+}

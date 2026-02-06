@@ -1,0 +1,40 @@
+{
+  "sections": [
+    {
+      "id": "mechanics",
+      "title": "Механика",
+      "description": "Движение, силы, энергия, импульс",
+      "icon_name": "Gauge",
+      "color": "from-blue-500 to-cyan-500",
+      "total_topics": 22,
+      "order_index": 1
+    }
+  ],
+  "subsections": [
+    {
+      "id": "kinematics",
+      "title": "Кинематика",
+      "section_id": "mechanics",
+      "order_index": 1
+    }
+  ],
+  "topics": [
+    {
+      "id": "m1",
+      "title": "Прямолинейное движение",
+      "description": "Движение тела по прямой линии",
+      "theory": "Полный теоретический материал...",
+      "formulas": ["v = s/t", "x = x₀ + vt"],
+      "examples": ["Пример 1", "Пример 2"],
+      "problems": ["Задача 1", "Задача 2"],
+      "section_id": "mechanics",
+      "subsection_id": "kinematics",
+      "order_index": 1
+    }
+  ]
+}
+
+
+
+
+
