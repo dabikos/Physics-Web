@@ -166,7 +166,7 @@ export function WorldPage() {
                             </div>
 
                             {/* Игровой контент */}
-                            <div className="max-w-4xl mx-auto">
+                            <div className={selectedGame === 'tug-of-war' ? 'max-w-7xl mx-auto' : 'max-w-4xl mx-auto'}>
                                 {renderGame()}
                             </div>
                         </motion.div>

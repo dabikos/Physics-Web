@@ -1,49 +1,31 @@
 /**
- * Утилита для работы с GitHub Models API
- * Документация: https://getfreeai.net/en/services/api/github-models/
- * API Endpoint: https://models.github.ai/inference/chat/completions
- * 
- * API полностью совместим с OpenAI Chat Completions API
+ * Утилита для работы с OpenAI API (GPT-5-nano)
+ * API Endpoint: https://api.openai.com/v1/chat/completions
  */
 
 import { TestQuestion } from '@/types/test'
 import { InteractiveTask, InteractiveTaskStep } from '@/types'
 
-const GITHUB_API_URL = 'https://models.github.ai/inference/chat/completions'
-const GITHUB_PAT = import.meta.env.VITE_GITHUB_PAT || ''
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || ''
+const OPENAI_MODEL = 'gpt-5-nano'
 
 interface GenerateTextOptions {
   prompt: string
   model?: string
   maxTokens?: number
-  temperature?: number
-  preferredProvider?: ProviderName | 'auto'
-  groqModel?: string
-}
-
-interface GitHubAPIResponse {
-  choices?: Array<{
-    message: {
-      content: string
-    }
-  }>
-  content?: string
-  text?: string
-}
-
-type ProviderName = 'github' | 'groq'
-
-interface ProviderConfig {
-  name: ProviderName
-  url: string
-  key: string
-  model: string
 }
 
 const readOpenAIResponse = async (response: Response): Promise<string> => {
-  const data: any = await response.json()
+  const textBody = await response.text()
+  let data: any
+  try {
+    data = JSON.parse(textBody)
+  } catch (e) {
+    console.error('Failed to parse API response as JSON:', textBody)
+    throw new Error('Ответ API не является валидным JSON. Проверьте консоль для деталей.')
+  }
+
   if (data.choices && data.choices[0]?.message?.content) {
     return data.choices[0].message.content
   }
@@ -53,29 +35,34 @@ const readOpenAIResponse = async (response: Response): Promise<string> => {
   if (data.content) {
     return data.content
   }
-  throw new Error('Неожиданный формат ответа от API. Проверьте консоль для деталей.')
+
+  if (data.error) {
+    throw new Error(`API error JSON: ${data.error.message || JSON.stringify(data.error)}`)
+  }
+
+  console.error('Unexpected API response structure:', data)
+  throw new Error(`Неожиданный формат ответа от API: ${JSON.stringify(data).slice(0, 100)}... Проверьте консоль для деталей.`)
 }
 
-const requestChatCompletion = async (config: ProviderConfig, prompt: string, maxTokens: number, temperature: number) => {
-  const response = await fetch(config.url, {
+const requestChatCompletion = async (model: string, prompt: string, maxTokens: number) => {
+  const response = await fetch(OPENAI_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${config.key}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
     },
     body: JSON.stringify({
-      model: config.model,
+      model,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: maxTokens,
-      temperature
+      max_completion_tokens: maxTokens,
+      reasoning_effort: 'low',
     })
   })
 
   if (!response.ok) {
     const errorText = await response.text()
-    const error = new Error(`${config.name} API error: ${response.status} - ${errorText}`)
-    ;(error as any).status = response.status
+    const error = new Error(`OpenAI API error: ${response.status} - ${errorText}`)
+      ; (error as any).status = response.status
     throw error
   }
 
@@ -83,70 +70,27 @@ const requestChatCompletion = async (config: ProviderConfig, prompt: string, max
 }
 
 export async function generateText(options: GenerateTextOptions): Promise<string> {
-  if (!GITHUB_PAT && !GROQ_API_KEY) {
-    throw new Error('Не настроены API ключи. Установите VITE_GITHUB_PAT и/или VITE_GROQ_API_KEY в .env файле')
+  if (!OPENAI_API_KEY) {
+    throw new Error('API ключ OpenAI не настроен. Установите VITE_OPENAI_API_KEY в .env файле')
   }
 
   const {
     prompt,
-    model = 'gpt-4o', // GitHub Models
-    maxTokens = 2000,
-    temperature = 0.7,
-    preferredProvider = 'auto',
-    groqModel
+    model = OPENAI_MODEL,
+    maxTokens = 4000,
   } = options
 
-  const providers: ProviderConfig[] = []
-
-  if (GITHUB_PAT && (preferredProvider === 'auto' || preferredProvider === 'github')) {
-    providers.push({
-      name: 'github',
-      url: GITHUB_API_URL,
-      key: GITHUB_PAT,
-      model
-    })
-  }
-
-  if (GROQ_API_KEY && (preferredProvider === 'auto' || preferredProvider === 'groq')) {
-    providers.push({
-      name: 'groq',
-      url: GROQ_API_URL,
-      key: GROQ_API_KEY,
-      model: groqModel || 'openai/gpt-oss-20b'
-    })
-  }
-
-  if (preferredProvider === 'github' && !GITHUB_PAT) {
-    throw new Error('GitHub ключ не настроен. Установите VITE_GITHUB_PAT в .env файле')
-  }
-  if (preferredProvider === 'groq' && !GROQ_API_KEY) {
-    throw new Error('Groq ключ не настроен. Установите VITE_GROQ_API_KEY в .env файле')
-  }
-
-  let lastError: any
-  for (const provider of providers) {
-    try {
-      return await requestChatCompletion(provider, prompt, maxTokens, temperature)
-    } catch (error: any) {
-      lastError = error
-      if (error?.status === 429) {
-        continue
-      }
-      if (error?.status === 401 && provider.name === 'github') {
-        throw new Error('Неверный токен GitHub. Проверьте VITE_GITHUB_PAT в .env файле.')
-      }
-      if (error?.status === 401 && provider.name === 'groq') {
-        throw new Error('Неверный токен Groq. Проверьте VITE_GROQ_API_KEY в .env файле.')
-      }
-      break
+  try {
+    return await requestChatCompletion(model, prompt, maxTokens)
+  } catch (error: any) {
+    if (error?.status === 429) {
+      throw new Error('Превышен лимит запросов OpenAI. Попробуйте позже.')
     }
+    if (error?.status === 401) {
+      throw new Error('Неверный API ключ OpenAI. Проверьте VITE_OPENAI_API_KEY в .env файле.')
+    }
+    throw new Error(error?.message || 'Ошибка при генерации текста')
   }
-
-  if (lastError?.status === 429) {
-    throw new Error('Превышен лимит запросов. Попробуйте позже или используйте другую модель.')
-  }
-
-  throw new Error(lastError?.message || 'Ошибка при генерации текста')
 }
 
 /**
@@ -203,7 +147,6 @@ export async function generateTheory(topicTitle: string, topicDescription: strin
   return await generateText({
     prompt,
     maxTokens: 4000,
-    temperature: 0.7
   })
 }
 
@@ -225,7 +168,6 @@ export async function generateProblems(topicTitle: string, count: number = 5): P
   const text = await generateText({
     prompt,
     maxTokens: 1500,
-    temperature: 0.8
   })
 
   // Разбиваем текст на отдельные задачи
@@ -251,13 +193,13 @@ function normalizeInteractiveTasks(rawTasks: any[]): InteractiveTask[] {
 
     const steps: InteractiveTaskStep[] = Array.isArray(task?.steps)
       ? task.steps
-          .map((step: any, stepIndex: number) => ({
-            id: String(step?.id || `${id}-s${stepIndex + 1}`),
-            type: allowedTypes.has(step?.type) ? step.type : 'text',
-            content: String(step?.content || '').trim(),
-            description: step?.description ? String(step.description) : undefined,
-          }))
-          .filter((step: InteractiveTaskStep) => step.content.length > 0)
+        .map((step: any, stepIndex: number) => ({
+          id: String(step?.id || `${id}-s${stepIndex + 1}`),
+          type: allowedTypes.has(step?.type) ? step.type : 'text',
+          content: String(step?.content || '').trim(),
+          description: step?.description ? String(step.description) : undefined,
+        }))
+        .filter((step: InteractiveTaskStep) => step.content.length > 0)
       : []
 
     const answerType =
@@ -272,18 +214,18 @@ function normalizeInteractiveTasks(rawTasks: any[]): InteractiveTask[] {
       condition: String(task?.condition || '').trim(),
       given: Array.isArray(task?.given)
         ? task.given.map((item: any) => ({
-            symbol: String(item?.symbol || '').trim(),
-            value: String(item?.value || '').trim(),
-            unit: item?.unit ? String(item.unit).trim() : undefined,
-            name: item?.name ? String(item.name).trim() : undefined,
-          }))
+          symbol: String(item?.symbol || '').trim(),
+          value: String(item?.value || '').trim(),
+          unit: item?.unit ? String(item.unit).trim() : undefined,
+          name: item?.name ? String(item.name).trim() : undefined,
+        }))
         : undefined,
       find: task?.find
         ? {
-            symbol: String(task.find.symbol || '').trim(),
-            unit: task.find.unit ? String(task.find.unit).trim() : undefined,
-            name: task.find.name ? String(task.find.name).trim() : undefined,
-          }
+          symbol: String(task.find.symbol || '').trim(),
+          unit: task.find.unit ? String(task.find.unit).trim() : undefined,
+          name: task.find.name ? String(task.find.name).trim() : undefined,
+        }
         : undefined,
       answerType,
       options: Array.isArray(task?.options)
@@ -375,23 +317,19 @@ export async function generateInteractiveTasks(topicTitle: string, count: number
   const text = await generateText({
     prompt,
     maxTokens: 2200,
-    temperature: 0.4
   })
 
   try {
     const parsed = parseInteractiveTasksFromText(text)
     return normalizeInteractiveTasks(parsed)
   } catch {
-    // Retry once with a stricter prompt (fallback to Groq)
+    // Retry once with a stricter prompt
     const retryPrompt = `${prompt}
 
 Важно: верни ТОЛЬКО валидный JSON массив. Никакого текста, комментариев и markdown.`
     const retryText = await generateText({
       prompt: retryPrompt,
       maxTokens: 2200,
-      temperature: 0.2,
-      preferredProvider: 'groq',
-      groqModel: 'openai/gpt-oss-20b'
     })
     try {
       const parsed = parseInteractiveTasksFromText(retryText)
@@ -448,7 +386,6 @@ D) [вариант 4]
   const text = await generateText({
     prompt,
     maxTokens: 3000,
-    temperature: 0.8
   })
 
   // Парсим ответ
@@ -531,7 +468,6 @@ export async function generateFormulaExplanation(formula: string, topicTitle: st
   return await generateText({
     prompt,
     maxTokens: 1500,
-    temperature: 0.7
   })
 }
 
@@ -557,7 +493,6 @@ export async function generateAiExplainQuestions(topicTitle: string, count: numb
   const text = await generateText({
     prompt,
     maxTokens: 1800,
-    temperature: 0.4
   })
 
   const payload = extractJsonPayload(text)

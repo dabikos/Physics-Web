@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { Logo } from '@/components/icons/Logo'
-import { School, Globe, Library, Bot, Settings, Sun, Moon, QrCode } from 'lucide-react'
+import { School, Globe, Library, Bot, Settings, Sun, Moon, QrCode, FileSpreadsheet } from 'lucide-react'
 import { NavItem } from '@/types'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,6 +11,7 @@ const navItems: { id: NavItem; label: string; icon: React.ReactNode }[] = [
   { id: 'library', label: 'Библиотека', icon: <Library size={20} /> },
   { id: 'ai', label: 'AI', icon: <Bot size={20} /> },
   { id: 'connect', label: '\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435', icon: <QrCode size={20} /> },
+  { id: 'worksheet', label: 'Рабочий лист', icon: <FileSpreadsheet size={20} /> },
   { id: 'settings', label: 'Настройки', icon: <Settings size={20} /> },
 ]
 

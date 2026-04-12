@@ -10,6 +10,7 @@ import { LibraryPage } from '@/pages/LibraryPage'
 import { AIPage } from '@/pages/AIPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ConnectPage } from '@/pages/ConnectPage'
+import { WorksheetPage } from '@/pages/WorksheetPage'
 import { LandingPage } from '@/pages/LandingPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -45,6 +46,7 @@ function App() {
         <Route path="/library" element={<RequireAuth><LibraryPage /></RequireAuth>} />
         <Route path="/ai" element={<RequireAuth><AIPage /></RequireAuth>} />
         <Route path="/connect" element={<RequireAuth><ConnectPage /></RequireAuth>} />
+        <Route path="/worksheet" element={<RequireAuth><WorksheetPage /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

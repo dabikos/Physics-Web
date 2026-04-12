@@ -1,4 +1,4 @@
-export type NavItem = 'lesson' | 'world' | 'library' | 'ai' | 'connect' | 'settings'
+export type NavItem = 'lesson' | 'world' | 'library' | 'ai' | 'connect' | 'worksheet' | 'settings'
 
 export interface LessonTopic {
     id: string
