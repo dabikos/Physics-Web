@@ -14,6 +14,7 @@ interface GenerateTextOptions {
   prompt: string
   model?: string
   maxTokens?: number
+  temperature?: number
 }
 
 const readOpenAIResponse = async (response: Response): Promise<string> => {
