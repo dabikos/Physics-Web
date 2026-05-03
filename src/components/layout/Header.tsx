@@ -3,7 +3,6 @@ import { Logo } from '@/components/icons/Logo'
 import { School, Globe, Library, Bot, Settings, Sun, Moon, QrCode, FileSpreadsheet, ShieldCheck } from 'lucide-react'
 import { NavItem } from '@/types'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useAuth } from '@/contexts/AuthContext'
 
 const navItems: { id: NavItem; label: string; icon: React.ReactNode }[] = [
   { id: 'lesson', label: 'Мой урок', icon: <School size={20} /> },
@@ -17,12 +16,9 @@ const navItems: { id: NavItem; label: string; icon: React.ReactNode }[] = [
 
 export function Header() {
   const { theme, toggleTheme } = useTheme()
-  const { isAdmin } = useAuth()
   const headerBg = theme === 'dark' ? 'bg-slate-900/80' : 'bg-white/80'
   const borderColor = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
-  const visibleNavItems = isAdmin
-    ? [...navItems, { id: 'admin' as NavItem, label: 'Admin', icon: <ShieldCheck size={20} /> }]
-    : navItems
+  const visibleNavItems = [...navItems, { id: 'admin' as NavItem, label: 'Admin', icon: <ShieldCheck size={20} /> }]
 
   const navInactive = theme === 'dark' ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
 
