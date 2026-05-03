@@ -4,7 +4,7 @@ interface UserData {
   id: string
   email: string
   name: string
-  role: 'student' | 'teacher'
+  role: 'student' | 'teacher' | 'admin'
   class_id?: string | null
 }
 
@@ -15,6 +15,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
   signOut: () => void
+  isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -23,6 +24,15 @@ const TOKEN_KEY = 'physics_token'
 const USER_KEY = 'physics_user'
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || '')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean)
+
+function isAdminUser(user: UserData | null) {
+  if (!user) return false
+  return user.role === 'admin' || ADMIN_EMAILS.includes(user.email.toLowerCase())
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null)
@@ -49,8 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data?.detail || 'Ошибка входа' }
       }
 
-      if (data.user?.role !== 'teacher') {
-        return { success: false, error: 'Доступ только для учителя' }
+      if (data.user?.role !== 'teacher' && data.user?.role !== 'admin' && !isAdminUser(data.user)) {
+        return { success: false, error: '\u0414\u043e\u0441\u0442\u0443\u043f \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f \u0443\u0447\u0438\u0442\u0435\u043b\u044f' }
       }
 
       localStorage.setItem(TOKEN_KEY, data.access_token)
@@ -92,7 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  const value = useMemo(() => ({ user, token, loading, signIn, signUp, signOut }), [user, token, loading])
+  const isAdmin = isAdminUser(user)
+  const value = useMemo(() => ({ user, token, loading, signIn, signUp, signOut, isAdmin }), [user, token, loading, isAdmin])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

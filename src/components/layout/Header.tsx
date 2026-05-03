@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { Logo } from '@/components/icons/Logo'
-import { School, Globe, Library, Bot, Settings, Sun, Moon, QrCode, FileSpreadsheet } from 'lucide-react'
+import { School, Globe, Library, Bot, Settings, Sun, Moon, QrCode, FileSpreadsheet, ShieldCheck } from 'lucide-react'
 import { NavItem } from '@/types'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -17,9 +17,13 @@ const navItems: { id: NavItem; label: string; icon: React.ReactNode }[] = [
 
 export function Header() {
   const { theme, toggleTheme } = useTheme()
-  const { user, signOut } = useAuth()
+  const { isAdmin } = useAuth()
   const headerBg = theme === 'dark' ? 'bg-slate-900/80' : 'bg-white/80'
   const borderColor = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
+  const visibleNavItems = isAdmin
+    ? [...navItems, { id: 'admin' as NavItem, label: 'Admin', icon: <ShieldCheck size={20} /> }]
+    : navItems
+
   const navInactive = theme === 'dark' ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
 
   return (
@@ -36,7 +40,7 @@ export function Header() {
 
           {/* Navigation */}
           <nav className="flex items-center gap-1">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavLink
                 key={item.id}
                 to={`/${item.id}`}

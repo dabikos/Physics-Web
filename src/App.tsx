@@ -12,6 +12,7 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { ConnectPage } from '@/pages/ConnectPage'
 import { WorksheetPage } from '@/pages/WorksheetPage'
 import { LandingPage } from '@/pages/LandingPage'
+import { AdminPage } from '@/pages/AdminPage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -20,6 +21,20 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   }
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+  return children
+}
+
+function RequireAdmin({ children }: { children: JSX.Element }) {
+  const { user, loading, isAdmin } = useAuth()
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading...</div>
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+  if (!isAdmin) {
+    return <Navigate to="/lesson" replace />
   }
   return children
 }
@@ -48,6 +63,7 @@ function App() {
         <Route path="/connect" element={<RequireAuth><ConnectPage /></RequireAuth>} />
         <Route path="/worksheet" element={<RequireAuth><WorksheetPage /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+        <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
