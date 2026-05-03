@@ -138,17 +138,26 @@ export function AdminPage() {
   }, [overview])
 
   async function adminFetch(path: string, init?: RequestInit) {
-    if (!token) throw new Error('Auth token is missing')
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers || {}),
-      },
-    })
+    if (!token) throw new Error('Auth token is missing. Sign out and sign in again.')
+
+    const url = `${API_BASE}${path}`
+    let response: Response
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...(init?.headers || {}),
+        },
+      })
+    } catch (fetchError) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown origin'
+      throw new Error(`Network/CORS error. Origin: ${origin}. API: ${API_BASE}. ${fetchError instanceof Error ? fetchError.message : ''}`)
+    }
+
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data?.detail || 'Admin request failed')
+    if (!response.ok) throw new Error(data?.detail || `Admin request failed (${response.status})`)
     return data
   }
 
@@ -269,6 +278,10 @@ export function AdminPage() {
               <p className="mt-3 max-w-2xl text-lg text-slate-300">
                 Manage Supabase content through protected backend endpoints. Changes are live immediately and do not require backend redeploy.
               </p>
+              <div className="mt-4 grid gap-2 text-xs font-semibold text-slate-400 sm:grid-cols-2">
+                <div>API: {API_BASE}</div>
+                <div>Token: {token ? 'present' : 'missing'}</div>
+              </div>
             </div>
             <button
               onClick={() => void loadItems(activeTab)}
