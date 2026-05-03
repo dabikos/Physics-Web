@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Database, FileText, FlaskConical, FunctionSquare, Layers3, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Database, FileText, FlaskConical, FunctionSquare, Layers3, Plus, RefreshCw, Save, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+
+type ContentTab = 'overview' | 'tests' | 'tasks' | 'formulas'
+type AdminItem = Record<string, unknown> & { id?: string; title?: string; name?: string; section_id?: string; subsection_id?: string; is_published?: boolean }
 
 type OverviewTotals = {
   sections: number
@@ -21,8 +24,6 @@ type OverviewTotals = {
 type SectionOverview = {
   id: string
   name: string
-  icon?: string | null
-  color?: string | null
   is_published: boolean
   subsection_count: number
   topic_count: number
@@ -36,25 +37,94 @@ type OverviewResponse = {
   sections: SectionOverview[]
 }
 
+const tabs: { id: ContentTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'tests', label: 'Tests' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'formulas', label: 'Formulas' },
+]
+
 function StatCard({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
   return (
     <div className="rounded-3xl border border-white/10 bg-white/80 p-5 shadow-xl shadow-slate-200/50 backdrop-blur dark:bg-slate-900/70 dark:shadow-black/20">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600/10 text-primary-600">
-        {icon}
-      </div>
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600/10 text-primary-600">{icon}</div>
       <div className="text-3xl font-black text-slate-900 dark:text-white">{value.toLocaleString('ru-RU')}</div>
       <div className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</div>
     </div>
   )
 }
 
+function createTemplate(tab: ContentTab): AdminItem {
+  if (tab === 'tests') {
+    return {
+      id: '',
+      section_id: 'mechanics',
+      subsection_id: '',
+      topic_id: null,
+      title: 'New test',
+      difficulty: 'basic',
+      questions: [
+        { question: 'Question text', options: ['Option A', 'Option B', 'Option C', 'Option D'], correct: 0, explanation: '' },
+      ],
+      translations: {},
+      time_limit: 300,
+      order_index: 0,
+      is_published: true,
+    }
+  }
+
+  if (tab === 'tasks') {
+    return {
+      id: '',
+      section_id: 'mechanics',
+      subsection_id: '',
+      topic_id: null,
+      topic_title: '',
+      title: 'New task',
+      problem_text: 'Problem text',
+      given_data: '',
+      find_text: '',
+      solution: '',
+      answer: '',
+      difficulty: 'medium',
+      translations: {},
+      order_index: 0,
+      is_published: true,
+    }
+  }
+
+  return {
+    id: '',
+    section_id: 'mechanics',
+    name: 'New formula',
+    formula: 'F = ma',
+    description: '',
+    variables: {},
+    unit: '',
+    translations: {},
+    order_index: 0,
+    is_published: true,
+  }
+}
+
+function itemTitle(item: AdminItem) {
+  return String(item.title || item.name || item.id || 'Untitled')
+}
+
 export function AdminPage() {
   const { token, user } = useAuth()
   const { theme } = useTheme()
+  const [activeTab, setActiveTab] = useState<ContentTab>('overview')
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
+  const [items, setItems] = useState<AdminItem[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [editorValue, setEditorValue] = useState('')
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
+  const selectedItem = useMemo(() => items.find((item) => item.id === selectedId) || null, [items, selectedId])
   const cards = useMemo(() => {
     if (!overview) return []
     return [
@@ -67,27 +137,124 @@ export function AdminPage() {
     ]
   }, [overview])
 
+  async function adminFetch(path: string, init?: RequestInit) {
+    if (!token) throw new Error('Auth token is missing')
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(init?.headers || {}),
+      },
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data?.detail || 'Admin request failed')
+    return data
+  }
+
   async function loadOverview() {
-    if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${API_BASE}/api/admin/content/overview`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data?.detail || 'Failed to load admin content')
+      const data = await adminFetch('/api/admin/content/overview')
       setOverview(data)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load admin content')
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load overview')
     } finally {
       setLoading(false)
     }
   }
 
+  async function loadItems(tab: ContentTab) {
+    if (tab === 'overview') {
+      await loadOverview()
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const data = await adminFetch(`/api/admin/content/${tab}?limit=100`)
+      const nextItems = data.items || []
+      setItems(nextItems)
+      const first = nextItems[0] || null
+      setSelectedId(first?.id || null)
+      setEditorValue(first ? JSON.stringify(first, null, 2) : '')
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : `Failed to load ${tab}`)
+      setItems([])
+      setSelectedId(null)
+      setEditorValue('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function selectItem(item: AdminItem) {
+    setSelectedId(item.id || null)
+    setEditorValue(JSON.stringify(item, null, 2))
+    setError(null)
+    setNotice(null)
+  }
+
+  function createNewItem() {
+    const item = createTemplate(activeTab)
+    setSelectedId(null)
+    setEditorValue(JSON.stringify(item, null, 2))
+    setNotice('Fill JSON and press Save to create a new item.')
+    setError(null)
+  }
+
+  async function saveItem() {
+    if (activeTab === 'overview') return
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const payload = JSON.parse(editorValue) as AdminItem
+      const id = String(payload.id || '').trim()
+      const isUpdate = Boolean(id && selectedItem?.id === id)
+      const endpoint = isUpdate ? `/api/admin/content/${activeTab}/${encodeURIComponent(id)}` : `/api/admin/content/${activeTab}`
+      const method = isUpdate ? 'PUT' : 'POST'
+      const data = await adminFetch(endpoint, { method, body: JSON.stringify(payload) })
+      const savedItem = data.item as AdminItem
+      setNotice(isUpdate ? 'Saved.' : 'Created.')
+      await loadItems(activeTab)
+      if (savedItem?.id) {
+        setSelectedId(savedItem.id)
+        setEditorValue(JSON.stringify(savedItem, null, 2))
+      }
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Failed to save item')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteItem() {
+    if (activeTab === 'overview' || !selectedItem?.id) return
+    const shouldDelete = window.confirm(`Delete ${itemTitle(selectedItem)}? This cannot be undone.`)
+    if (!shouldDelete) return
+
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      await adminFetch(`/api/admin/content/${activeTab}/${encodeURIComponent(selectedItem.id)}`, { method: 'DELETE' })
+      setNotice('Deleted.')
+      await loadItems(activeTab)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete item')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   useEffect(() => {
-    void loadOverview()
-  }, [token])
+    if (!token) return
+    void loadItems(activeTab)
+  }, [activeTab, token])
 
   return (
     <main className="min-h-screen px-6 pb-12 pt-28 lg:px-10">
@@ -100,11 +267,11 @@ export function AdminPage() {
               </div>
               <h1 className="text-4xl font-black tracking-tight lg:text-5xl">Physics AI Admin</h1>
               <p className="mt-3 max-w-2xl text-lg text-slate-300">
-                Protected panel for Supabase content. This version reads live content counts and prepares the workspace for safe CRUD forms through the backend.
+                Manage Supabase content through protected backend endpoints. Changes are live immediately and do not require backend redeploy.
               </p>
             </div>
             <button
-              onClick={() => void loadOverview()}
+              onClick={() => void loadItems(activeTab)}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 font-bold text-slate-950 transition hover:bg-primary-100"
             >
               <RefreshCw size={18} /> Refresh
@@ -112,69 +279,121 @@ export function AdminPage() {
           </div>
         </section>
 
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
-            {error}
-          </div>
-        )}
+        <div className="mb-6 flex flex-wrap gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-2xl px-5 py-3 font-black transition ${activeTab === tab.id ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/25' : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:bg-white/10'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {loading ? (
-          <div className="rounded-3xl bg-white/80 p-8 text-center font-bold text-slate-500 shadow-xl dark:bg-slate-900/70 dark:text-slate-300">
-            Loading admin data...
-          </div>
-        ) : overview ? (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-              {cards.map((card) => (
-                <StatCard key={card.label} {...card} />
-              ))}
-            </section>
+        {error && <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">{error}</div>}
+        {notice && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">{notice}</div>}
 
-            <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
-              <div className="mb-5 flex items-center justify-between">
+        {activeTab === 'overview' ? (
+          loading ? (
+            <div className="rounded-3xl bg-white/80 p-8 text-center font-bold text-slate-500 shadow-xl dark:bg-slate-900/70 dark:text-slate-300">Loading admin data...</div>
+          ) : overview ? (
+            <>
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+                {cards.map((card) => <StatCard key={card.label} {...card} />)}
+              </section>
+
+              <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white">Content by section</h2>
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
+                  <table className="w-full min-w-[840px] border-collapse text-left">
+                    <thead className={theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}>
+                      <tr className="text-sm uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <th className="px-5 py-4">Section</th>
+                        <th className="px-5 py-4">Subsections</th>
+                        <th className="px-5 py-4">Topics</th>
+                        <th className="px-5 py-4">Tests</th>
+                        <th className="px-5 py-4">Tasks</th>
+                        <th className="px-5 py-4">Formulas</th>
+                        <th className="px-5 py-4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overview.sections.map((section) => (
+                        <tr key={section.id} className="border-t border-slate-200 text-slate-700 dark:border-white/10 dark:text-slate-200">
+                          <td className="px-5 py-4 font-bold">{section.name}</td>
+                          <td className="px-5 py-4">{section.subsection_count}</td>
+                          <td className="px-5 py-4">{section.topic_count}</td>
+                          <td className="px-5 py-4">{section.test_count}</td>
+                          <td className="px-5 py-4">{section.task_count}</td>
+                          <td className="px-5 py-4">{section.formula_count}</td>
+                          <td className="px-5 py-4"><span className={`rounded-full px-3 py-1 text-xs font-black ${section.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{section.is_published ? 'Published' : 'Draft'}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          ) : null
+        ) : (
+          <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
+            <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">Content by section</h2>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Lessons, tests, tasks and formulas are read from Supabase through protected backend endpoints.
-                  </p>
+                  <h2 className="text-2xl font-black capitalize text-slate-900 dark:text-white">{activeTab}</h2>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Showing first {items.length} items</p>
+                </div>
+                <button onClick={createNewItem} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
+                  <Plus size={18} /> New
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="rounded-2xl bg-slate-50 p-5 text-center font-bold text-slate-500 dark:bg-white/5 dark:text-slate-300">Loading...</div>
+              ) : (
+                <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => selectItem(item)}
+                      className={`w-full rounded-2xl border p-4 text-left transition ${selectedId === item.id ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10' : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10'}`}
+                    >
+                      <div className="truncate font-black text-slate-900 dark:text-white">{itemTitle(item)}</div>
+                      <div className="mt-1 truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{item.section_id} / {item.subsection_id || 'no subsection'}</div>
+                      <div className="mt-2 text-xs font-bold text-slate-400">{item.id}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">JSON editor</h2>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Keep valid JSON. For formulas use LaTeX strings.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button disabled={saving || !editorValue} onClick={() => void saveItem()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+                    <Save size={18} /> {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button disabled={saving || !selectedItem?.id} onClick={() => void deleteItem()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+                    <Trash2 size={18} /> Delete
+                  </button>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
-                <table className="w-full min-w-[840px] border-collapse text-left">
-                  <thead className={theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}>
-                    <tr className="text-sm uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      <th className="px-5 py-4">Section</th>
-                      <th className="px-5 py-4">Subsections</th>
-                      <th className="px-5 py-4">Topics</th>
-                      <th className="px-5 py-4">Tests</th>
-                      <th className="px-5 py-4">Tasks</th>
-                      <th className="px-5 py-4">Formulas</th>
-                      <th className="px-5 py-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {overview.sections.map((section) => (
-                      <tr key={section.id} className="border-t border-slate-200 text-slate-700 dark:border-white/10 dark:text-slate-200">
-                        <td className="px-5 py-4 font-bold">{section.name}</td>
-                        <td className="px-5 py-4">{section.subsection_count}</td>
-                        <td className="px-5 py-4">{section.topic_count}</td>
-                        <td className="px-5 py-4">{section.test_count}</td>
-                        <td className="px-5 py-4">{section.task_count}</td>
-                        <td className="px-5 py-4">{section.formula_count}</td>
-                        <td className="px-5 py-4">
-                          <span className={`rounded-full px-3 py-1 text-xs font-black ${section.is_published ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {section.is_published ? 'Published' : 'Draft'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </>
-        ) : null}
+              <textarea
+                value={editorValue}
+                onChange={(event) => setEditorValue(event.target.value)}
+                spellCheck={false}
+                className="h-[650px] w-full rounded-2xl border border-slate-200 bg-slate-950 p-5 font-mono text-sm leading-6 text-slate-50 outline-none ring-primary-500 transition focus:ring-4 dark:border-white/10"
+                placeholder="Select an item or create a new one"
+              />
+            </div>
+          </section>
+        )}
       </div>
     </main>
   )
