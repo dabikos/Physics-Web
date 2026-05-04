@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Database, FileText, FlaskConical, FunctionSquare, Layers3, Plus, RefreshCw, Save, ShieldCheck, Trash2 } from 'lucide-react'
+import { BlockMath } from 'react-katex'
+import 'katex/dist/katex.min.css'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 
@@ -44,6 +46,20 @@ type TaskDraft = {
   answer: string
   difficulty: string
   translations: Record<string, unknown>
+  order_index: number
+  is_published: boolean
+}
+
+
+type FormulaDraft = {
+  id: string
+  section_id: string
+  name: string
+  formula: string
+  description: string
+  variablesText: string
+  unit: string
+  translationsText: string
   order_index: number
   is_published: boolean
 }
@@ -211,6 +227,65 @@ function taskDraftToPayload(draft: TaskDraft): AdminItem {
     answer: draft.answer.trim(),
     difficulty: draft.difficulty.trim() || 'medium',
     translations: draft.translations,
+    order_index: draft.order_index,
+    is_published: draft.is_published,
+  }
+}
+
+
+function stringifyJsonField(value: unknown) {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') return JSON.stringify(value, null, 2)
+  return '{}'
+}
+
+function parseJsonObject(value: string, fieldName: string) {
+  try {
+    const parsed = value.trim() ? JSON.parse(value) : {}
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`${fieldName} must be a JSON object.`)
+    }
+    return parsed as Record<string, unknown>
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('must be')) throw error
+    throw new Error(`${fieldName} contains invalid JSON.`)
+  }
+}
+
+function toFormulaDraft(item: AdminItem): FormulaDraft {
+  return {
+    id: String(item.id || ''),
+    section_id: String(item.section_id || 'mechanics'),
+    name: String(item.name || 'New formula'),
+    formula: String(item.formula || ''),
+    description: String(item.description || ''),
+    variablesText: stringifyJsonField(item.variables),
+    unit: String(item.unit || ''),
+    translationsText: stringifyJsonField(item.translations),
+    order_index: Number.isFinite(Number(item.order_index)) ? Number(item.order_index) : 0,
+    is_published: item.is_published !== false,
+  }
+}
+
+function validateFormulaDraft(draft: FormulaDraft) {
+  if (!draft.section_id.trim()) return 'Section is required.'
+  if (!draft.name.trim()) return 'Name is required.'
+  if (!draft.formula.trim()) return 'Formula is required.'
+  parseJsonObject(draft.variablesText, 'Variables')
+  parseJsonObject(draft.translationsText, 'Translations')
+  return null
+}
+
+function formulaDraftToPayload(draft: FormulaDraft): AdminItem {
+  return {
+    id: draft.id.trim(),
+    section_id: draft.section_id.trim(),
+    name: draft.name.trim(),
+    formula: draft.formula.trim(),
+    description: draft.description.trim(),
+    variables: parseJsonObject(draft.variablesText, 'Variables'),
+    unit: draft.unit.trim(),
+    translations: parseJsonObject(draft.translationsText, 'Translations'),
     order_index: draft.order_index,
     is_published: draft.is_published,
   }
@@ -480,6 +555,79 @@ function TaskEditor({
   )
 }
 
+
+function FormulaPreview({ formula }: { formula: string }) {
+  if (!formula.trim()) {
+    return <div className="rounded-2xl bg-slate-100 p-5 text-sm font-bold text-slate-500 dark:bg-white/5 dark:text-slate-400">Formula preview will appear here.</div>
+  }
+
+  try {
+    return (
+      <div className="overflow-x-auto rounded-2xl border border-primary-500/20 bg-primary-50 p-5 text-slate-950 dark:bg-primary-500/10 dark:text-white">
+        <BlockMath math={formula} />
+      </div>
+    )
+  } catch {
+    return <div className="rounded-2xl bg-red-50 p-5 text-sm font-bold text-red-700 dark:bg-red-500/10 dark:text-red-200">KaTeX preview failed. Check LaTeX syntax.</div>
+  }
+}
+
+function FormulaEditor({
+  draft,
+  saving,
+  selectedItem,
+  onChange,
+  onSave,
+  onDelete,
+}: {
+  draft: FormulaDraft
+  saving: boolean
+  selectedItem: AdminItem | null
+  onChange: (draft: FormulaDraft) => void
+  onSave: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">Formula editor</h2>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Edit LaTeX and preview rendering before saving.</p>
+        </div>
+        <div className="flex gap-2">
+          <button disabled={saving} onClick={onSave} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Save size={18} /> {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button disabled={saving || !selectedItem?.id} onClick={onDelete} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Trash2 size={18} /> Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
+        <Field label="Name"><input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} className={inputClass} /></Field>
+        <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>
+        <Field label="Unit"><input value={draft.unit} onChange={(event) => onChange({ ...draft, unit: event.target.value })} className={inputClass} /></Field>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="Order"><input type="number" value={draft.order_index} onChange={(event) => onChange({ ...draft, order_index: Number(event.target.value) || 0 })} className={inputClass} /></Field>
+        <label className="mt-7 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <input type="checkbox" checked={draft.is_published} onChange={(event) => onChange({ ...draft, is_published: event.target.checked })} className="h-5 w-5" />
+          Published
+        </label>
+      </div>
+
+      <Field label="LaTeX formula"><textarea value={draft.formula} onChange={(event) => onChange({ ...draft, formula: event.target.value })} className={`${textareaClass} min-h-24 font-mono`} /></Field>
+      <FormulaPreview formula={draft.formula} />
+      <Field label="Description"><textarea value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} className={`${textareaClass} min-h-28`} /></Field>
+      <Field label="Variables JSON"><textarea value={draft.variablesText} onChange={(event) => onChange({ ...draft, variablesText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
+      <Field label="Translations JSON"><textarea value={draft.translationsText} onChange={(event) => onChange({ ...draft, translationsText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
+    </div>
+  )
+}
+
 export function AdminPage() {
   const { token, user } = useAuth()
   const { theme } = useTheme()
@@ -490,6 +638,7 @@ export function AdminPage() {
   const [editorValue, setEditorValue] = useState('')
   const [testDraft, setTestDraft] = useState<TestDraft | null>(null)
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
+  const [formulaDraft, setFormulaDraft] = useState<FormulaDraft | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -563,6 +712,7 @@ export function AdminPage() {
       setEditorValue(first ? JSON.stringify(first, null, 2) : '')
       setTestDraft(tab === 'tests' && first ? toTestDraft(first) : null)
       setTaskDraft(tab === 'tasks' && first ? toTaskDraft(first) : null)
+      setFormulaDraft(tab === 'formulas' && first ? toFormulaDraft(first) : null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : `Failed to load ${tab}`)
       setItems([])
@@ -570,6 +720,7 @@ export function AdminPage() {
       setEditorValue('')
       setTestDraft(null)
       setTaskDraft(null)
+      setFormulaDraft(null)
     } finally {
       setLoading(false)
     }
@@ -580,6 +731,8 @@ export function AdminPage() {
     setEditorValue(JSON.stringify(item, null, 2))
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
+    setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
+    setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
     setError(null)
     setNotice(null)
   }
@@ -590,7 +743,7 @@ export function AdminPage() {
     setEditorValue(JSON.stringify(item, null, 2))
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
-    setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : activeTab === 'tasks' ? 'Fill the form and press Save to create a new task.' : 'Fill JSON and press Save to create a new item.')
+    setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : activeTab === 'tasks' ? 'Fill the form and press Save to create a new task.' : activeTab === 'formulas' ? 'Fill the form and press Save to create a new formula.' : 'Fill JSON and press Save to create a new item.')
     setError(null)
   }
 
@@ -604,13 +757,19 @@ export function AdminPage() {
         ? testDraftToPayload(testDraft)
         : activeTab === 'tasks' && taskDraft
           ? taskDraftToPayload(taskDraft)
-          : JSON.parse(editorValue) as AdminItem
+          : activeTab === 'formulas' && formulaDraft
+            ? formulaDraftToPayload(formulaDraft)
+            : JSON.parse(editorValue) as AdminItem
       if (activeTab === 'tests' && testDraft) {
         const validationError = validateTestDraft(testDraft)
         if (validationError) throw new Error(validationError)
       }
       if (activeTab === 'tasks' && taskDraft) {
         const validationError = validateTaskDraft(taskDraft)
+        if (validationError) throw new Error(validationError)
+      }
+      if (activeTab === 'formulas' && formulaDraft) {
+        const validationError = validateFormulaDraft(formulaDraft)
         if (validationError) throw new Error(validationError)
       }
       const id = String(payload.id || '').trim()
@@ -626,6 +785,7 @@ export function AdminPage() {
         setEditorValue(JSON.stringify(savedItem, null, 2))
         setTestDraft(activeTab === 'tests' ? toTestDraft(savedItem) : null)
         setTaskDraft(activeTab === 'tasks' ? toTaskDraft(savedItem) : null)
+        setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(savedItem) : null)
       }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to save item')
@@ -795,6 +955,22 @@ export function AdminPage() {
                   onChange={(nextDraft) => {
                     setTaskDraft(nextDraft)
                     setEditorValue(JSON.stringify(taskDraftToPayload(nextDraft), null, 2))
+                  }}
+                  onSave={() => void saveItem()}
+                  onDelete={() => void deleteItem()}
+                />
+              ) : activeTab === 'formulas' && formulaDraft ? (
+                <FormulaEditor
+                  draft={formulaDraft}
+                  saving={saving}
+                  selectedItem={selectedItem}
+                  onChange={(nextDraft) => {
+                    setFormulaDraft(nextDraft)
+                    try {
+                      setEditorValue(JSON.stringify(formulaDraftToPayload(nextDraft), null, 2))
+                    } catch {
+                      setEditorValue(JSON.stringify({ ...nextDraft }, null, 2))
+                    }
                   }}
                   onSave={() => void saveItem()}
                   onDelete={() => void deleteItem()}
