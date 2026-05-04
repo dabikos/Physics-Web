@@ -1692,7 +1692,7 @@ export function AdminPage() {
 
   function prepareNewLessonDraft(nextDraft: LessonDraft) {
     if (selectedId) return nextDraft
-    const autoId = nextDraft.id.trim() ? nextDraft.id : makeAutoId('lessons', nextDraft)
+    const autoId = makeAutoId('lessons', nextDraft)
     return {
       ...nextDraft,
       id: autoId,
@@ -1704,7 +1704,7 @@ export function AdminPage() {
     if (selectedId) return nextDraft
     return {
       ...nextDraft,
-      id: nextDraft.id.trim() ? nextDraft.id : makeAutoId('tests', nextDraft),
+      id: makeAutoId('tests', nextDraft),
       order_index: getNextOrderIndex('tests', undefined, nextDraft.section_id, nextDraft.subsection_id),
     }
   }
@@ -1713,7 +1713,7 @@ export function AdminPage() {
     if (selectedId) return nextDraft
     return {
       ...nextDraft,
-      id: nextDraft.id.trim() ? nextDraft.id : makeAutoId('tasks', nextDraft),
+      id: makeAutoId('tasks', nextDraft),
       order_index: getNextOrderIndex('tasks', undefined, nextDraft.section_id, nextDraft.subsection_id),
     }
   }
@@ -1722,7 +1722,7 @@ export function AdminPage() {
     if (selectedId) return nextDraft
     let autoId = nextDraft.id
     try {
-      autoId = nextDraft.id.trim() ? nextDraft.id : makeAutoId('formulas', nextDraft)
+      autoId = makeAutoId('formulas', nextDraft)
     } catch {
       autoId = nextDraft.id
     }
