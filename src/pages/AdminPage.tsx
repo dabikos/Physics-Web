@@ -984,7 +984,32 @@ function FormulaEditor({
 
       <Field label="LaTeX formula"><textarea value={draft.formula} onChange={(event) => onChange({ ...draft, formula: event.target.value })} className={`${textareaClass} min-h-24 font-mono`} /></Field>
       <FormulaPreview formula={draft.formula} />
-      <Field label="Description"><textarea value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} className={`${textareaClass} min-h-28`} /></Field>
+
+      <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
+        <div>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Formula content</h3>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Edit Russian source and translations side by side. LaTeX formula is shared.</p>
+        </div>
+        <MultilingualInputRow
+          label="Formula name"
+          russian={draft.name}
+          english={translationText(formulaTranslations, 'en', 'name')}
+          kazakh={translationText(formulaTranslations, 'kk', 'name')}
+          onRussianChange={(value) => onChange({ ...draft, name: value })}
+          onEnglishChange={(value) => updateFormulaTranslation('en', 'name', value)}
+          onKazakhChange={(value) => updateFormulaTranslation('kk', 'name', value)}
+        />
+        <MultilingualTextareaRow
+          label="Description"
+          russian={draft.description}
+          english={translationText(formulaTranslations, 'en', 'description')}
+          kazakh={translationText(formulaTranslations, 'kk', 'description')}
+          onRussianChange={(value) => onChange({ ...draft, description: value })}
+          onEnglishChange={(value) => updateFormulaTranslation('en', 'description', value)}
+          onKazakhChange={(value) => updateFormulaTranslation('kk', 'description', value)}
+          minHeight="min-h-28"
+        />
+      </div>
 
       <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1024,29 +1049,6 @@ function FormulaEditor({
               No variables yet. Add symbols like F, G, r, m1.
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
-        <div>
-          <h3 className="text-xl font-black text-slate-900 dark:text-white">Translations</h3>
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Translate formula name and explanation. LaTeX formula is shared.</p>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {translationLanguages.map((language) => (
-            <div key={language.code} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/70">
-              <div className="mb-4">
-                <h4 className="font-black text-slate-900 dark:text-white">{language.label}</h4>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{language.hint}</p>
-              </div>
-              <Field label="Name">
-                <input value={translationText(formulaTranslations, language.code, 'name')} onChange={(event) => updateFormulaTranslation(language.code, 'name', event.target.value)} className={inputClass} placeholder={draft.name} />
-              </Field>
-              <Field label="Description">
-                <textarea value={translationText(formulaTranslations, language.code, 'description')} onChange={(event) => updateFormulaTranslation(language.code, 'description', event.target.value)} className={`${textareaClass} min-h-28`} placeholder={draft.description} />
-              </Field>
-            </div>
-          ))}
         </div>
       </div>
 
