@@ -322,6 +322,20 @@ function parseJsonValue(value: string, fieldName: string) {
   }
 }
 
+function parseJsonArray(value: string, fieldName: string) {
+  const parsed = parseJsonValue(value, fieldName)
+  if (!Array.isArray(parsed)) throw new Error(`${fieldName} must be a JSON array.`)
+  return parsed
+}
+
+function parseOptionalJsonObject(value: string, fieldName: string) {
+  const parsed = parseJsonValue(value, fieldName)
+  if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) {
+    throw new Error(`${fieldName} must be a JSON object.`)
+  }
+  return parsed as Record<string, unknown> | null
+}
+
 function toLessonDraft(item: AdminItem): LessonDraft {
   const kind = item.lesson_kind || 'topics'
   return {
@@ -354,10 +368,8 @@ function validateLessonDraft(draft: LessonDraft) {
     if (!draft.section_id.trim()) return 'Section is required.'
     if (!draft.subsection_id.trim()) return 'Subsection is required.'
     if (!draft.title.trim()) return 'Topic title is required.'
-    const formulas = parseJsonValue(draft.formulasText, 'Formulas')
-    if (!Array.isArray(formulas)) return 'Formulas must be a JSON array.'
-    const video = parseJsonValue(draft.videoText, 'Video')
-    if (video !== null && (typeof video !== 'object' || Array.isArray(video))) return 'Video must be a JSON object.'
+    parseJsonArray(draft.formulasText, 'Formulas')
+    parseOptionalJsonObject(draft.videoText, 'Video')
   }
   return null
 }
@@ -393,8 +405,8 @@ function lessonDraftToPayload(draft: LessonDraft): AdminItem {
     title: draft.title.trim(),
     brief_info: draft.brief_info.trim(),
     example_problem: draft.example_problem.trim(),
-    formulas: parseJsonValue(draft.formulasText, 'Formulas') || [],
-    video: parseJsonValue(draft.videoText, 'Video'),
+    formulas: parseJsonArray(draft.formulasText, 'Formulas'),
+    video: parseOptionalJsonObject(draft.videoText, 'Video'),
     translations: draft.translations,
     order_index: draft.order_index,
     is_published: draft.is_published,
@@ -854,6 +866,44 @@ function LessonEditor({
 }) {
   const titleKey = draft.kind === 'topics' ? 'title' : 'name'
   const russianTitle = draft.kind === 'topics' ? draft.title : draft.name
+  const lessonFormulas = useMemo(() => {
+    try {
+      return parseJsonArray(draft.formulasText, 'Formulas').map((formula) => String(formula))
+    } catch {
+      return []
+    }
+  }, [draft.formulasText])
+  const lessonVideo = useMemo(() => {
+    try {
+      return parseOptionalJsonObject(draft.videoText, 'Video') || {}
+    } catch {
+      return {}
+    }
+  }, [draft.videoText])
+
+  const updateLessonFormulas = (formulas: string[]) => {
+    onChange({ ...draft, formulasText: JSON.stringify(formulas, null, 2) })
+  }
+
+  const updateLessonFormula = (index: number, value: string) => {
+    updateLessonFormulas(lessonFormulas.map((formula, formulaIndex) => formulaIndex === index ? value : formula))
+  }
+
+  const addLessonFormula = () => {
+    updateLessonFormulas([...lessonFormulas, ''])
+  }
+
+  const removeLessonFormula = (index: number) => {
+    updateLessonFormulas(lessonFormulas.filter((_, formulaIndex) => formulaIndex !== index))
+  }
+
+  const updateLessonVideo = (key: string, value: string) => {
+    const nextVideo = { ...lessonVideo, [key]: value }
+    Object.keys(nextVideo).forEach((field) => {
+      if (String(nextVideo[field] || '').trim() === '') delete nextVideo[field]
+    })
+    onChange({ ...draft, videoText: JSON.stringify(nextVideo, null, 2) })
+  }
 
   return (
     <div className="space-y-5">
@@ -928,10 +978,63 @@ function LessonEditor({
       </div>
 
       {draft.kind === 'topics' && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="Formulas JSON array"><textarea value={draft.formulasText} onChange={(event) => onChange({ ...draft, formulasText: event.target.value })} className={`${textareaClass} min-h-40 font-mono text-sm`} /></Field>
-          <Field label="Video JSON object"><textarea value={draft.videoText} onChange={(event) => onChange({ ...draft, videoText: event.target.value })} className={`${textareaClass} min-h-40 font-mono text-sm`} /></Field>
-        </div>
+        <>
+          <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">Topic formulas</h3>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Add formulas as separate rows. Use LaTeX where possible.</p>
+              </div>
+              <button onClick={addLessonFormula} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
+                <Plus size={18} /> Add formula
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {lessonFormulas.map((formula, formulaIndex) => (
+                <div key={formulaIndex} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/70">
+                  <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                    <Field label={`Formula ${formulaIndex + 1}`}>
+                      <input value={formula} onChange={(event) => updateLessonFormula(formulaIndex, event.target.value)} className={`${inputClass} font-mono`} />
+                    </Field>
+                    <button onClick={() => removeLessonFormula(formulaIndex)} className="mt-7 rounded-xl bg-red-100 px-3 py-2 text-sm font-black text-red-700 dark:bg-red-500/10 dark:text-red-200">
+                      Remove
+                    </button>
+                  </div>
+                  <div className="mt-3">
+                    <FormulaPreview formula={formula} />
+                  </div>
+                </div>
+              ))}
+              {!lessonFormulas.length && (
+                <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-bold text-slate-500 dark:bg-slate-950/70 dark:text-slate-400">
+                  No formulas yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">Video</h3>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Optional video metadata for this lesson topic.</p>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="YouTube / video URL"><input value={String(lessonVideo.url || '')} onChange={(event) => updateLessonVideo('url', event.target.value)} className={inputClass} /></Field>
+              <Field label="Video title"><input value={String(lessonVideo.title || '')} onChange={(event) => updateLessonVideo('title', event.target.value)} className={inputClass} /></Field>
+              <Field label="Duration"><input value={String(lessonVideo.duration || '')} onChange={(event) => updateLessonVideo('duration', event.target.value)} className={inputClass} placeholder="08:30" /></Field>
+              <Field label="Thumbnail URL"><input value={String(lessonVideo.thumbnail || '')} onChange={(event) => updateLessonVideo('thumbnail', event.target.value)} className={inputClass} /></Field>
+            </div>
+          </div>
+
+          <details className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
+            <summary className="cursor-pointer font-black text-slate-900 dark:text-white">Advanced lesson JSON</summary>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <Field label="Formulas JSON array"><textarea value={draft.formulasText} onChange={(event) => onChange({ ...draft, formulasText: event.target.value })} className={`${textareaClass} min-h-40 font-mono text-sm`} /></Field>
+              <Field label="Video JSON object"><textarea value={draft.videoText} onChange={(event) => onChange({ ...draft, videoText: event.target.value })} className={`${textareaClass} min-h-40 font-mono text-sm`} /></Field>
+            </div>
+          </details>
+        </>
       )}
     </div>
   )
