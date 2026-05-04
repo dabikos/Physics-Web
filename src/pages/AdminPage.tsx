@@ -8,6 +8,27 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
 type ContentTab = 'overview' | 'tests' | 'tasks' | 'formulas'
 type AdminItem = Record<string, unknown> & { id?: string; title?: string; name?: string; section_id?: string; subsection_id?: string; is_published?: boolean }
 
+type TestQuestionDraft = {
+  question: string
+  options: string[]
+  correct: number
+  explanation?: string
+}
+
+type TestDraft = {
+  id: string
+  section_id: string
+  subsection_id: string
+  topic_id: string | null
+  title: string
+  difficulty: string
+  questions: TestQuestionDraft[]
+  translations: Record<string, unknown>
+  time_limit: number
+  order_index: number
+  is_published: boolean
+}
+
 type OverviewTotals = {
   sections: number
   subsections: number
@@ -52,6 +73,78 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
       <div className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</div>
     </div>
   )
+}
+
+
+function normalizeQuestion(raw: unknown): TestQuestionDraft {
+  const question = typeof raw === 'object' && raw !== null ? raw as Record<string, unknown> : {}
+  const rawOptions = Array.isArray(question.options) ? question.options : []
+  const options = rawOptions.map((option) => String(option)).slice(0, 6)
+  while (options.length < 4) options.push('')
+
+  return {
+    question: String(question.question || ''),
+    options,
+    correct: Number.isFinite(Number(question.correct)) ? Number(question.correct) : 0,
+    explanation: String(question.explanation || ''),
+  }
+}
+
+function toTestDraft(item: AdminItem): TestDraft {
+  const rawQuestions = Array.isArray(item.questions) ? item.questions : []
+  return {
+    id: String(item.id || ''),
+    section_id: String(item.section_id || 'mechanics'),
+    subsection_id: String(item.subsection_id || ''),
+    topic_id: item.topic_id ? String(item.topic_id) : null,
+    title: String(item.title || 'New test'),
+    difficulty: String(item.difficulty || 'basic'),
+    questions: rawQuestions.length ? rawQuestions.map(normalizeQuestion) : [normalizeQuestion({ question: '', options: ['', '', '', ''], correct: 0 })],
+    translations: typeof item.translations === 'object' && item.translations !== null && !Array.isArray(item.translations) ? item.translations as Record<string, unknown> : {},
+    time_limit: Number.isFinite(Number(item.time_limit)) ? Number(item.time_limit) : 300,
+    order_index: Number.isFinite(Number(item.order_index)) ? Number(item.order_index) : 0,
+    is_published: item.is_published !== false,
+  }
+}
+
+function validateTestDraft(draft: TestDraft) {
+  if (!draft.section_id.trim()) return 'Section is required.'
+  if (!draft.subsection_id.trim()) return 'Subsection is required.'
+  if (!draft.title.trim()) return 'Title is required.'
+  if (!draft.questions.length) return 'At least one question is required.'
+
+  for (let questionIndex = 0; questionIndex < draft.questions.length; questionIndex += 1) {
+    const question = draft.questions[questionIndex]
+    if (!question.question.trim()) return `Question ${questionIndex + 1}: text is required.`
+    const filledOptions = question.options.filter((option) => option.trim())
+    if (filledOptions.length < 2) return `Question ${questionIndex + 1}: at least two options are required.`
+    if (question.correct < 0 || question.correct >= question.options.length || !question.options[question.correct]?.trim()) {
+      return `Question ${questionIndex + 1}: correct answer points to an empty option.`
+    }
+  }
+
+  return null
+}
+
+function testDraftToPayload(draft: TestDraft): AdminItem {
+  return {
+    id: draft.id.trim(),
+    section_id: draft.section_id.trim(),
+    subsection_id: draft.subsection_id.trim(),
+    topic_id: draft.topic_id || null,
+    title: draft.title.trim(),
+    difficulty: draft.difficulty.trim() || 'basic',
+    questions: draft.questions.map((question) => ({
+      question: question.question.trim(),
+      options: question.options.map((option) => option.trim()),
+      correct: question.correct,
+      explanation: question.explanation?.trim() || '',
+    })),
+    translations: draft.translations,
+    time_limit: draft.time_limit,
+    order_index: draft.order_index,
+    is_published: draft.is_published,
+  }
 }
 
 function createTemplate(tab: ContentTab): AdminItem {
@@ -111,6 +204,135 @@ function itemTitle(item: AdminItem) {
   return String(item.title || item.name || item.id || 'Untitled')
 }
 
+
+function TestEditor({
+  draft,
+  saving,
+  selectedItem,
+  onChange,
+  onSave,
+  onDelete,
+}: {
+  draft: TestDraft
+  saving: boolean
+  selectedItem: AdminItem | null
+  onChange: (draft: TestDraft) => void
+  onSave: () => void
+  onDelete: () => void
+}) {
+  const updateQuestion = (index: number, updater: (question: TestQuestionDraft) => TestQuestionDraft) => {
+    onChange({
+      ...draft,
+      questions: draft.questions.map((question, questionIndex) => questionIndex === index ? updater(question) : question),
+    })
+  }
+
+  const addQuestion = () => {
+    onChange({
+      ...draft,
+      questions: [
+        ...draft.questions,
+        { question: '', options: ['', '', '', ''], correct: 0, explanation: '' },
+      ],
+    })
+  }
+
+  const removeQuestion = (index: number) => {
+    const nextQuestions = draft.questions.filter((_, questionIndex) => questionIndex !== index)
+    onChange({ ...draft, questions: nextQuestions.length ? nextQuestions : draft.questions })
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">Test editor</h2>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Edit questions safely without touching JSON indexes.</p>
+        </div>
+        <div className="flex gap-2">
+          <button disabled={saving} onClick={onSave} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Save size={18} /> {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button disabled={saving || !selectedItem?.id} onClick={onDelete} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Trash2 size={18} /> Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <label className="space-y-2">
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">ID</span>
+          <input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">Title</span>
+          <input value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">Section</span>
+          <input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">Subsection</span>
+          <input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">Difficulty</span>
+          <select value={draft.difficulty} onChange={(event) => onChange({ ...draft, difficulty: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+            <option value="basic">basic</option>
+            <option value="standard">standard</option>
+            <option value="advanced">advanced</option>
+            <option value="olympiad">olympiad</option>
+          </select>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="space-y-2">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">Time limit</span>
+            <input type="number" value={draft.time_limit} onChange={(event) => onChange({ ...draft, time_limit: Number(event.target.value) || 0 })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
+          </label>
+          <label className="space-y-2">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">Order</span>
+            <input type="number" value={draft.order_index} onChange={(event) => onChange({ ...draft, order_index: Number(event.target.value) || 0 })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
+          </label>
+        </div>
+      </div>
+
+      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+        <input type="checkbox" checked={draft.is_published} onChange={(event) => onChange({ ...draft, is_published: event.target.checked })} className="h-5 w-5" />
+        Published
+      </label>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Questions</h3>
+          <button onClick={addQuestion} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
+            <Plus size={18} /> Add question
+          </button>
+        </div>
+
+        {draft.questions.map((question, questionIndex) => (
+          <div key={questionIndex} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h4 className="font-black text-slate-900 dark:text-white">Question {questionIndex + 1}</h4>
+              <button onClick={() => removeQuestion(questionIndex)} className="rounded-xl bg-red-100 px-3 py-2 text-sm font-black text-red-700 disabled:opacity-50" disabled={draft.questions.length <= 1}>Remove</button>
+            </div>
+            <textarea value={question.question} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, question: event.target.value }))} className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white" placeholder="Question text" />
+            <div className="mt-4 grid gap-3">
+              {question.options.map((option, optionIndex) => (
+                <label key={optionIndex} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-950">
+                  <input type="radio" checked={question.correct === optionIndex} onChange={() => updateQuestion(questionIndex, (current) => ({ ...current, correct: optionIndex }))} />
+                  <input value={option} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, options: current.options.map((item, index) => index === optionIndex ? event.target.value : item) }))} className="flex-1 bg-transparent font-semibold text-slate-900 outline-none dark:text-white" placeholder={`Option ${optionIndex + 1}`} />
+                </label>
+              ))}
+            </div>
+            <textarea value={question.explanation || ''} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, explanation: event.target.value }))} className="mt-4 min-h-20 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white" placeholder="Explanation" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function AdminPage() {
   const { token, user } = useAuth()
   const { theme } = useTheme()
@@ -119,6 +341,7 @@ export function AdminPage() {
   const [items, setItems] = useState<AdminItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editorValue, setEditorValue] = useState('')
+  const [testDraft, setTestDraft] = useState<TestDraft | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -190,11 +413,13 @@ export function AdminPage() {
       const first = nextItems[0] || null
       setSelectedId(first?.id || null)
       setEditorValue(first ? JSON.stringify(first, null, 2) : '')
+      setTestDraft(tab === 'tests' && first ? toTestDraft(first) : null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : `Failed to load ${tab}`)
       setItems([])
       setSelectedId(null)
       setEditorValue('')
+      setTestDraft(null)
     } finally {
       setLoading(false)
     }
@@ -203,6 +428,7 @@ export function AdminPage() {
   function selectItem(item: AdminItem) {
     setSelectedId(item.id || null)
     setEditorValue(JSON.stringify(item, null, 2))
+    setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setError(null)
     setNotice(null)
   }
@@ -211,7 +437,8 @@ export function AdminPage() {
     const item = createTemplate(activeTab)
     setSelectedId(null)
     setEditorValue(JSON.stringify(item, null, 2))
-    setNotice('Fill JSON and press Save to create a new item.')
+    setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
+    setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : 'Fill JSON and press Save to create a new item.')
     setError(null)
   }
 
@@ -221,7 +448,11 @@ export function AdminPage() {
     setError(null)
     setNotice(null)
     try {
-      const payload = JSON.parse(editorValue) as AdminItem
+      const payload = activeTab === 'tests' && testDraft ? testDraftToPayload(testDraft) : JSON.parse(editorValue) as AdminItem
+      if (activeTab === 'tests' && testDraft) {
+        const validationError = validateTestDraft(testDraft)
+        if (validationError) throw new Error(validationError)
+      }
       const id = String(payload.id || '').trim()
       const isUpdate = Boolean(id && selectedItem?.id === id)
       const endpoint = isUpdate ? `/api/admin/content/${activeTab}/${encodeURIComponent(id)}` : `/api/admin/content/${activeTab}`
@@ -233,6 +464,7 @@ export function AdminPage() {
       if (savedItem?.id) {
         setSelectedId(savedItem.id)
         setEditorValue(JSON.stringify(savedItem, null, 2))
+        setTestDraft(activeTab === 'tests' ? toTestDraft(savedItem) : null)
       }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to save item')
@@ -382,28 +614,44 @@ export function AdminPage() {
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">JSON editor</h2>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Keep valid JSON. For formulas use LaTeX strings.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button disabled={saving || !editorValue} onClick={() => void saveItem()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
-                    <Save size={18} /> {saving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button disabled={saving || !selectedItem?.id} onClick={() => void deleteItem()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
-                    <Trash2 size={18} /> Delete
-                  </button>
-                </div>
-              </div>
+              {activeTab === 'tests' && testDraft ? (
+                <TestEditor
+                  draft={testDraft}
+                  saving={saving}
+                  selectedItem={selectedItem}
+                  onChange={(nextDraft) => {
+                    setTestDraft(nextDraft)
+                    setEditorValue(JSON.stringify(testDraftToPayload(nextDraft), null, 2))
+                  }}
+                  onSave={() => void saveItem()}
+                  onDelete={() => void deleteItem()}
+                />
+              ) : (
+                <>
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 dark:text-white">JSON editor</h2>
+                      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Keep valid JSON. For formulas use LaTeX strings.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button disabled={saving || !editorValue} onClick={() => void saveItem()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+                        <Save size={18} /> {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button disabled={saving || !selectedItem?.id} onClick={() => void deleteItem()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+                        <Trash2 size={18} /> Delete
+                      </button>
+                    </div>
+                  </div>
 
-              <textarea
-                value={editorValue}
-                onChange={(event) => setEditorValue(event.target.value)}
-                spellCheck={false}
-                className="h-[650px] w-full rounded-2xl border border-slate-200 bg-slate-950 p-5 font-mono text-sm leading-6 text-slate-50 outline-none ring-primary-500 transition focus:ring-4 dark:border-white/10"
-                placeholder="Select an item or create a new one"
-              />
+                  <textarea
+                    value={editorValue}
+                    onChange={(event) => setEditorValue(event.target.value)}
+                    spellCheck={false}
+                    className="h-[650px] w-full rounded-2xl border border-slate-200 bg-slate-950 p-5 font-mono text-sm leading-6 text-slate-50 outline-none ring-primary-500 transition focus:ring-4 dark:border-white/10"
+                    placeholder="Select an item or create a new one"
+                  />
+                </>
+              )}
             </div>
           </section>
         )}
