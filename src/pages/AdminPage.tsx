@@ -29,6 +29,25 @@ type TestDraft = {
   is_published: boolean
 }
 
+
+type TaskDraft = {
+  id: string
+  section_id: string
+  subsection_id: string
+  topic_id: string | null
+  topic_title: string
+  title: string
+  problem_text: string
+  given_data: string
+  find_text: string
+  solution: string
+  answer: string
+  difficulty: string
+  translations: Record<string, unknown>
+  order_index: number
+  is_published: boolean
+}
+
 type OverviewTotals = {
   sections: number
   subsections: number
@@ -142,6 +161,56 @@ function testDraftToPayload(draft: TestDraft): AdminItem {
     })),
     translations: draft.translations,
     time_limit: draft.time_limit,
+    order_index: draft.order_index,
+    is_published: draft.is_published,
+  }
+}
+
+
+function toTaskDraft(item: AdminItem): TaskDraft {
+  return {
+    id: String(item.id || ''),
+    section_id: String(item.section_id || 'mechanics'),
+    subsection_id: String(item.subsection_id || ''),
+    topic_id: item.topic_id ? String(item.topic_id) : null,
+    topic_title: String(item.topic_title || ''),
+    title: String(item.title || 'New task'),
+    problem_text: String(item.problem_text || ''),
+    given_data: String(item.given_data || ''),
+    find_text: String(item.find_text || ''),
+    solution: String(item.solution || ''),
+    answer: String(item.answer || ''),
+    difficulty: String(item.difficulty || 'medium'),
+    translations: typeof item.translations === 'object' && item.translations !== null && !Array.isArray(item.translations) ? item.translations as Record<string, unknown> : {},
+    order_index: Number.isFinite(Number(item.order_index)) ? Number(item.order_index) : 0,
+    is_published: item.is_published !== false,
+  }
+}
+
+function validateTaskDraft(draft: TaskDraft) {
+  if (!draft.section_id.trim()) return 'Section is required.'
+  if (!draft.subsection_id.trim()) return 'Subsection is required.'
+  if (!draft.title.trim()) return 'Title is required.'
+  if (!draft.problem_text.trim()) return 'Problem text is required.'
+  if (!draft.answer.trim()) return 'Answer is required.'
+  return null
+}
+
+function taskDraftToPayload(draft: TaskDraft): AdminItem {
+  return {
+    id: draft.id.trim(),
+    section_id: draft.section_id.trim(),
+    subsection_id: draft.subsection_id.trim(),
+    topic_id: draft.topic_id || null,
+    topic_title: draft.topic_title.trim(),
+    title: draft.title.trim(),
+    problem_text: draft.problem_text.trim(),
+    given_data: draft.given_data.trim(),
+    find_text: draft.find_text.trim(),
+    solution: draft.solution.trim(),
+    answer: draft.answer.trim(),
+    difficulty: draft.difficulty.trim() || 'medium',
+    translations: draft.translations,
     order_index: draft.order_index,
     is_published: draft.is_published,
   }
@@ -333,6 +402,84 @@ function TestEditor({
   )
 }
 
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="space-y-2">
+      <span className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+const inputClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white'
+const textareaClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white'
+
+function TaskEditor({
+  draft,
+  saving,
+  selectedItem,
+  onChange,
+  onSave,
+  onDelete,
+}: {
+  draft: TaskDraft
+  saving: boolean
+  selectedItem: AdminItem | null
+  onChange: (draft: TaskDraft) => void
+  onSave: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">Task editor</h2>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Edit problem fields safely. Use LaTeX directly in text where needed.</p>
+        </div>
+        <div className="flex gap-2">
+          <button disabled={saving} onClick={onSave} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Save size={18} /> {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button disabled={saving || !selectedItem?.id} onClick={onDelete} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Trash2 size={18} /> Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
+        <Field label="Title"><input value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} className={inputClass} /></Field>
+        <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>
+        <Field label="Subsection"><input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className={inputClass} /></Field>
+        <Field label="Topic title"><input value={draft.topic_title} onChange={(event) => onChange({ ...draft, topic_title: event.target.value })} className={inputClass} /></Field>
+        <Field label="Difficulty">
+          <select value={draft.difficulty} onChange={(event) => onChange({ ...draft, difficulty: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+            <option value="easy">easy</option>
+            <option value="medium">medium</option>
+            <option value="hard">hard</option>
+            <option value="advanced">advanced</option>
+          </select>
+        </Field>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="Order"><input type="number" value={draft.order_index} onChange={(event) => onChange({ ...draft, order_index: Number(event.target.value) || 0 })} className={inputClass} /></Field>
+        <label className="mt-7 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <input type="checkbox" checked={draft.is_published} onChange={(event) => onChange({ ...draft, is_published: event.target.checked })} className="h-5 w-5" />
+          Published
+        </label>
+      </div>
+
+      <Field label="Problem text"><textarea value={draft.problem_text} onChange={(event) => onChange({ ...draft, problem_text: event.target.value })} className={`${textareaClass} min-h-32`} /></Field>
+      <Field label="Given"><textarea value={draft.given_data} onChange={(event) => onChange({ ...draft, given_data: event.target.value })} className={`${textareaClass} min-h-24`} /></Field>
+      <Field label="Find"><textarea value={draft.find_text} onChange={(event) => onChange({ ...draft, find_text: event.target.value })} className={`${textareaClass} min-h-20`} /></Field>
+      <Field label="Solution"><textarea value={draft.solution} onChange={(event) => onChange({ ...draft, solution: event.target.value })} className={`${textareaClass} min-h-44`} /></Field>
+      <Field label="Answer"><textarea value={draft.answer} onChange={(event) => onChange({ ...draft, answer: event.target.value })} className={`${textareaClass} min-h-20`} /></Field>
+    </div>
+  )
+}
+
 export function AdminPage() {
   const { token, user } = useAuth()
   const { theme } = useTheme()
@@ -342,6 +489,7 @@ export function AdminPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editorValue, setEditorValue] = useState('')
   const [testDraft, setTestDraft] = useState<TestDraft | null>(null)
+  const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -414,12 +562,14 @@ export function AdminPage() {
       setSelectedId(first?.id || null)
       setEditorValue(first ? JSON.stringify(first, null, 2) : '')
       setTestDraft(tab === 'tests' && first ? toTestDraft(first) : null)
+      setTaskDraft(tab === 'tasks' && first ? toTaskDraft(first) : null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : `Failed to load ${tab}`)
       setItems([])
       setSelectedId(null)
       setEditorValue('')
       setTestDraft(null)
+      setTaskDraft(null)
     } finally {
       setLoading(false)
     }
@@ -429,6 +579,7 @@ export function AdminPage() {
     setSelectedId(item.id || null)
     setEditorValue(JSON.stringify(item, null, 2))
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
+    setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
     setError(null)
     setNotice(null)
   }
@@ -438,7 +589,8 @@ export function AdminPage() {
     setSelectedId(null)
     setEditorValue(JSON.stringify(item, null, 2))
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
-    setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : 'Fill JSON and press Save to create a new item.')
+    setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
+    setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : activeTab === 'tasks' ? 'Fill the form and press Save to create a new task.' : 'Fill JSON and press Save to create a new item.')
     setError(null)
   }
 
@@ -448,9 +600,17 @@ export function AdminPage() {
     setError(null)
     setNotice(null)
     try {
-      const payload = activeTab === 'tests' && testDraft ? testDraftToPayload(testDraft) : JSON.parse(editorValue) as AdminItem
+      const payload = activeTab === 'tests' && testDraft
+        ? testDraftToPayload(testDraft)
+        : activeTab === 'tasks' && taskDraft
+          ? taskDraftToPayload(taskDraft)
+          : JSON.parse(editorValue) as AdminItem
       if (activeTab === 'tests' && testDraft) {
         const validationError = validateTestDraft(testDraft)
+        if (validationError) throw new Error(validationError)
+      }
+      if (activeTab === 'tasks' && taskDraft) {
+        const validationError = validateTaskDraft(taskDraft)
         if (validationError) throw new Error(validationError)
       }
       const id = String(payload.id || '').trim()
@@ -465,6 +625,7 @@ export function AdminPage() {
         setSelectedId(savedItem.id)
         setEditorValue(JSON.stringify(savedItem, null, 2))
         setTestDraft(activeTab === 'tests' ? toTestDraft(savedItem) : null)
+        setTaskDraft(activeTab === 'tasks' ? toTaskDraft(savedItem) : null)
       }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to save item')
@@ -622,6 +783,18 @@ export function AdminPage() {
                   onChange={(nextDraft) => {
                     setTestDraft(nextDraft)
                     setEditorValue(JSON.stringify(testDraftToPayload(nextDraft), null, 2))
+                  }}
+                  onSave={() => void saveItem()}
+                  onDelete={() => void deleteItem()}
+                />
+              ) : activeTab === 'tasks' && taskDraft ? (
+                <TaskEditor
+                  draft={taskDraft}
+                  saving={saving}
+                  selectedItem={selectedItem}
+                  onChange={(nextDraft) => {
+                    setTaskDraft(nextDraft)
+                    setEditorValue(JSON.stringify(taskDraftToPayload(nextDraft), null, 2))
                   }}
                   onSave={() => void saveItem()}
                   onDelete={() => void deleteItem()}
