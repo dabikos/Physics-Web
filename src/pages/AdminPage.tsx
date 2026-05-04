@@ -393,6 +393,21 @@ function setTranslationText(
   return setTranslation(translations, language, (current) => ({ ...current, [key]: value }))
 }
 
+function setTranslationVariable(
+  translations: Record<string, unknown>,
+  language: TranslationLanguage,
+  symbol: string,
+  value: string,
+) {
+  return setTranslation(translations, language, (current) => ({
+    ...current,
+    variables: {
+      ...asRecord(current.variables),
+      [symbol]: value,
+    },
+  }))
+}
+
 function setTranslationQuestion(
   translations: Record<string, unknown>,
   language: TranslationLanguage,
@@ -782,6 +797,13 @@ function FormulaEditor({
   onSave: () => void
   onDelete: () => void
 }) {
+  const formulaVariables = useMemo(() => {
+    try {
+      return parseJsonObject(draft.variablesText, 'Variables')
+    } catch {
+      return {}
+    }
+  }, [draft.variablesText])
   const formulaTranslations = useMemo(() => {
     try {
       return parseJsonObject(draft.translationsText, 'Translations')
@@ -793,6 +815,77 @@ function FormulaEditor({
   const updateFormulaTranslation = (language: TranslationLanguage, key: string, value: string) => {
     const translations = setTranslationText(formulaTranslations, language, key, value)
     onChange({ ...draft, translationsText: JSON.stringify(translations, null, 2) })
+  }
+
+  const variableSymbols = useMemo(() => {
+    const symbols = new Set<string>()
+    Object.keys(formulaVariables).forEach((symbol) => symbols.add(symbol))
+    translationLanguages.forEach((language) => {
+      Object.keys(asRecord(getTranslation(formulaTranslations, language.code).variables)).forEach((symbol) => symbols.add(symbol))
+    })
+    return [...symbols]
+  }, [formulaTranslations, formulaVariables])
+
+  const updateVariableSymbol = (oldSymbol: string, nextSymbol: string) => {
+    const trimmedSymbol = nextSymbol.trim()
+    if (!trimmedSymbol) return
+
+    const nextVariables = { ...formulaVariables }
+    nextVariables[trimmedSymbol] = String(nextVariables[oldSymbol] || '')
+    if (trimmedSymbol !== oldSymbol) delete nextVariables[oldSymbol]
+
+    const nextTranslations = translationLanguages.reduce((translations, language) => {
+      const languageTranslation = getTranslation(translations, language.code)
+      const languageVariables = { ...asRecord(languageTranslation.variables) }
+      languageVariables[trimmedSymbol] = String(languageVariables[oldSymbol] || '')
+      if (trimmedSymbol !== oldSymbol) delete languageVariables[oldSymbol]
+      return setTranslation(translations, language.code, (current) => ({ ...current, variables: languageVariables }))
+    }, formulaTranslations)
+
+    onChange({
+      ...draft,
+      variablesText: JSON.stringify(nextVariables, null, 2),
+      translationsText: JSON.stringify(nextTranslations, null, 2),
+    })
+  }
+
+  const updateVariableValue = (symbol: string, value: string) => {
+    onChange({
+      ...draft,
+      variablesText: JSON.stringify({ ...formulaVariables, [symbol]: value }, null, 2),
+    })
+  }
+
+  const updateTranslatedVariable = (language: TranslationLanguage, symbol: string, value: string) => {
+    const translations = setTranslationVariable(formulaTranslations, language, symbol, value)
+    onChange({ ...draft, translationsText: JSON.stringify(translations, null, 2) })
+  }
+
+  const addVariable = () => {
+    let index = variableSymbols.length + 1
+    let symbol = `x${index}`
+    while (variableSymbols.includes(symbol)) {
+      index += 1
+      symbol = `x${index}`
+    }
+    updateVariableValue(symbol, '')
+  }
+
+  const removeVariable = (symbol: string) => {
+    const nextVariables = { ...formulaVariables }
+    delete nextVariables[symbol]
+    const nextTranslations = translationLanguages.reduce((translations, language) => {
+      const languageTranslation = getTranslation(translations, language.code)
+      const languageVariables = { ...asRecord(languageTranslation.variables) }
+      delete languageVariables[symbol]
+      return setTranslation(translations, language.code, (current) => ({ ...current, variables: languageVariables }))
+    }, formulaTranslations)
+
+    onChange({
+      ...draft,
+      variablesText: JSON.stringify(nextVariables, null, 2),
+      translationsText: JSON.stringify(nextTranslations, null, 2),
+    })
   }
 
   return (
@@ -830,7 +923,47 @@ function FormulaEditor({
       <Field label="LaTeX formula"><textarea value={draft.formula} onChange={(event) => onChange({ ...draft, formula: event.target.value })} className={`${textareaClass} min-h-24 font-mono`} /></Field>
       <FormulaPreview formula={draft.formula} />
       <Field label="Description"><textarea value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} className={`${textareaClass} min-h-28`} /></Field>
-      <Field label="Variables JSON"><textarea value={draft.variablesText} onChange={(event) => onChange({ ...draft, variablesText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
+
+      <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">Variables</h3>
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Edit symbols and explanations in all languages without touching JSON.</p>
+          </div>
+          <button onClick={addVariable} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
+            <Plus size={18} /> Add variable
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {variableSymbols.map((symbol) => (
+            <div key={symbol} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/70">
+              <div className="grid gap-3 xl:grid-cols-[130px_1fr_1fr_1fr_auto]">
+                <Field label="Symbol">
+                  <input value={symbol} onChange={(event) => updateVariableSymbol(symbol, event.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Russian">
+                  <input value={String(formulaVariables[symbol] || '')} onChange={(event) => updateVariableValue(symbol, event.target.value)} className={inputClass} />
+                </Field>
+                <Field label="English">
+                  <input value={String(asRecord(getTranslation(formulaTranslations, 'en').variables)[symbol] || '')} onChange={(event) => updateTranslatedVariable('en', symbol, event.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Kazakh">
+                  <input value={String(asRecord(getTranslation(formulaTranslations, 'kk').variables)[symbol] || '')} onChange={(event) => updateTranslatedVariable('kk', symbol, event.target.value)} className={inputClass} />
+                </Field>
+                <button onClick={() => removeVariable(symbol)} className="mt-7 rounded-xl bg-red-100 px-3 py-2 text-sm font-black text-red-700 dark:bg-red-500/10 dark:text-red-200">
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+          {!variableSymbols.length && (
+            <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-bold text-slate-500 dark:bg-slate-950/70 dark:text-slate-400">
+              No variables yet. Add symbols like F, G, r, m1.
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
         <div>
@@ -855,6 +988,7 @@ function FormulaEditor({
         </div>
       </div>
 
+      <Field label="Advanced variables JSON"><textarea value={draft.variablesText} onChange={(event) => onChange({ ...draft, variablesText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
       <Field label="Advanced translations JSON"><textarea value={draft.translationsText} onChange={(event) => onChange({ ...draft, translationsText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
     </div>
   )
