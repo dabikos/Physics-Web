@@ -732,7 +732,6 @@ export function AdminPage() {
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
     setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
-    setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
     setError(null)
     setNotice(null)
   }
@@ -743,6 +742,7 @@ export function AdminPage() {
     setEditorValue(JSON.stringify(item, null, 2))
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
+    setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
     setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : activeTab === 'tasks' ? 'Fill the form and press Save to create a new task.' : activeTab === 'formulas' ? 'Fill the form and press Save to create a new formula.' : 'Fill JSON and press Save to create a new item.')
     setError(null)
   }
