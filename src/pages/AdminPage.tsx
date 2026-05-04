@@ -545,28 +545,16 @@ function TestEditor({
       </label>
 
       <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
-        <div>
-          <h3 className="text-xl font-black text-slate-900 dark:text-white">Translations</h3>
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-            Translate text only. Correct answer indexes are shared from the Russian version.
-          </p>
-        </div>
-        {translationLanguages.map((language) => (
-          <div key={language.code} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/70">
-            <div className="mb-4">
-              <h4 className="font-black text-slate-900 dark:text-white">{language.label}</h4>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{language.hint}</p>
-            </div>
-            <Field label={`${language.label} title`}>
-              <input
-                value={translationText(draft.translations, language.code, 'title')}
-                onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'title', event.target.value) })}
-                className={inputClass}
-                placeholder={draft.title}
-              />
-            </Field>
-          </div>
-        ))}
+        <h3 className="text-xl font-black text-slate-900 dark:text-white">Test title</h3>
+        <MultilingualInputRow
+          label="Title"
+          russian={draft.title}
+          english={translationText(draft.translations, 'en', 'title')}
+          kazakh={translationText(draft.translations, 'kk', 'title')}
+          onRussianChange={(value) => onChange({ ...draft, title: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'title', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'title', value) })}
+        />
       </div>
 
       <div className="space-y-4">
@@ -583,54 +571,42 @@ function TestEditor({
               <h4 className="font-black text-slate-900 dark:text-white">Question {questionIndex + 1}</h4>
               <button onClick={() => removeQuestion(questionIndex)} className="rounded-xl bg-red-100 px-3 py-2 text-sm font-black text-red-700 disabled:opacity-50" disabled={draft.questions.length <= 1}>Remove</button>
             </div>
-            <textarea value={question.question} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, question: event.target.value }))} className="min-h-24 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white" placeholder="Question text" />
-            <div className="mt-4 grid gap-3">
+            <MultilingualTextareaRow
+              label="Question"
+              russian={question.question}
+              english={translationQuestionText(draft.translations, 'en', questionIndex, 'question')}
+              kazakh={translationQuestionText(draft.translations, 'kk', questionIndex, 'question')}
+              onRussianChange={(value) => updateQuestion(questionIndex, (current) => ({ ...current, question: value }))}
+              onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationQuestion(draft.translations, 'en', questionIndex, (current) => ({ ...current, question: value })) })}
+              onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationQuestion(draft.translations, 'kk', questionIndex, (current) => ({ ...current, question: value })) })}
+              minHeight="min-h-24"
+            />
+            <div className="mt-4 space-y-3">
               {question.options.map((option, optionIndex) => (
-                <label key={optionIndex} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-950">
-                  <input type="radio" checked={question.correct === optionIndex} onChange={() => updateQuestion(questionIndex, (current) => ({ ...current, correct: optionIndex }))} />
-                  <input value={option} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, options: current.options.map((item, index) => index === optionIndex ? event.target.value : item) }))} className="flex-1 bg-transparent font-semibold text-slate-900 outline-none dark:text-white" placeholder={`Option ${optionIndex + 1}`} />
-                </label>
-              ))}
-            </div>
-            <textarea value={question.explanation || ''} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, explanation: event.target.value }))} className="mt-4 min-h-20 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white" placeholder="Explanation" />
-            <div className="mt-4 grid gap-4 xl:grid-cols-2">
-              {translationLanguages.map((language) => (
-                <div key={language.code} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
-                  <div className="mb-3 font-black text-slate-900 dark:text-white">{language.label} translation</div>
-                  <textarea
-                    value={translationQuestionText(draft.translations, language.code, questionIndex, 'question')}
-                    onChange={(event) => onChange({
-                      ...draft,
-                      translations: setTranslationQuestion(draft.translations, language.code, questionIndex, (current) => ({ ...current, question: event.target.value })),
-                    })}
-                    className={`${textareaClass} min-h-20`}
-                    placeholder={question.question}
-                  />
-                  <div className="mt-3 grid gap-2">
-                    {question.options.map((option, optionIndex) => (
-                      <input
-                        key={optionIndex}
-                        value={translationOptionText(draft.translations, language.code, questionIndex, optionIndex)}
-                        onChange={(event) => onChange({
-                          ...draft,
-                          translations: setTranslationOption(draft.translations, language.code, questionIndex, optionIndex, event.target.value),
-                        })}
-                        className={inputClass}
-                        placeholder={option || `Option ${optionIndex + 1}`}
-                      />
-                    ))}
+                <div key={optionIndex} className={`rounded-2xl border p-4 ${question.correct === optionIndex ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10' : 'border-slate-200 bg-white dark:border-white/10 dark:bg-slate-950'}`}>
+                  <label className="mb-3 flex items-center gap-3 text-sm font-black text-slate-700 dark:text-slate-200">
+                    <input type="radio" checked={question.correct === optionIndex} onChange={() => updateQuestion(questionIndex, (current) => ({ ...current, correct: optionIndex }))} />
+                    Correct answer: option {optionIndex + 1}
+                  </label>
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    <Field label="Russian"><input value={option} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, options: current.options.map((item, index) => index === optionIndex ? event.target.value : item) }))} className={inputClass} placeholder={`Option ${optionIndex + 1}`} /></Field>
+                    <Field label="English"><input value={translationOptionText(draft.translations, 'en', questionIndex, optionIndex)} onChange={(event) => onChange({ ...draft, translations: setTranslationOption(draft.translations, 'en', questionIndex, optionIndex, event.target.value) })} className={inputClass} placeholder={option || `Option ${optionIndex + 1}`} /></Field>
+                    <Field label="Kazakh"><input value={translationOptionText(draft.translations, 'kk', questionIndex, optionIndex)} onChange={(event) => onChange({ ...draft, translations: setTranslationOption(draft.translations, 'kk', questionIndex, optionIndex, event.target.value) })} className={inputClass} placeholder={option || `Option ${optionIndex + 1}`} /></Field>
                   </div>
-                  <textarea
-                    value={translationQuestionText(draft.translations, language.code, questionIndex, 'explanation')}
-                    onChange={(event) => onChange({
-                      ...draft,
-                      translations: setTranslationQuestion(draft.translations, language.code, questionIndex, (current) => ({ ...current, explanation: event.target.value })),
-                    })}
-                    className={`${textareaClass} mt-3 min-h-20`}
-                    placeholder={question.explanation || 'Explanation'}
-                  />
                 </div>
               ))}
+            </div>
+            <div className="mt-4">
+              <MultilingualTextareaRow
+                label="Explanation"
+                russian={question.explanation || ''}
+                english={translationQuestionText(draft.translations, 'en', questionIndex, 'explanation')}
+                kazakh={translationQuestionText(draft.translations, 'kk', questionIndex, 'explanation')}
+                onRussianChange={(value) => updateQuestion(questionIndex, (current) => ({ ...current, explanation: value }))}
+                onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationQuestion(draft.translations, 'en', questionIndex, (current) => ({ ...current, explanation: value })) })}
+                onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationQuestion(draft.translations, 'kk', questionIndex, (current) => ({ ...current, explanation: value })) })}
+                minHeight="min-h-20"
+              />
             </div>
           </div>
         ))}
@@ -651,6 +627,66 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 const inputClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white'
 const textareaClass = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white'
+
+function MultilingualInputRow({
+  label,
+  russian,
+  english,
+  kazakh,
+  onRussianChange,
+  onEnglishChange,
+  onKazakhChange,
+}: {
+  label: string
+  russian: string
+  english: string
+  kazakh: string
+  onRussianChange: (value: string) => void
+  onEnglishChange: (value: string) => void
+  onKazakhChange: (value: string) => void
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/70">
+      <div className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Field label="Russian"><input value={russian} onChange={(event) => onRussianChange(event.target.value)} className={inputClass} /></Field>
+        <Field label="English"><input value={english} onChange={(event) => onEnglishChange(event.target.value)} className={inputClass} placeholder={russian} /></Field>
+        <Field label="Kazakh"><input value={kazakh} onChange={(event) => onKazakhChange(event.target.value)} className={inputClass} placeholder={russian} /></Field>
+      </div>
+    </div>
+  )
+}
+
+function MultilingualTextareaRow({
+  label,
+  russian,
+  english,
+  kazakh,
+  onRussianChange,
+  onEnglishChange,
+  onKazakhChange,
+  minHeight = 'min-h-24',
+}: {
+  label: string
+  russian: string
+  english: string
+  kazakh: string
+  onRussianChange: (value: string) => void
+  onEnglishChange: (value: string) => void
+  onKazakhChange: (value: string) => void
+  minHeight?: string
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/70">
+      <div className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Field label="Russian"><textarea value={russian} onChange={(event) => onRussianChange(event.target.value)} className={`${textareaClass} ${minHeight}`} /></Field>
+        <Field label="English"><textarea value={english} onChange={(event) => onEnglishChange(event.target.value)} className={`${textareaClass} ${minHeight}`} placeholder={russian} /></Field>
+        <Field label="Kazakh"><textarea value={kazakh} onChange={(event) => onKazakhChange(event.target.value)} className={`${textareaClass} ${minHeight}`} placeholder={russian} /></Field>
+      </div>
+    </div>
+  )
+}
 
 function TaskEditor({
   draft,
@@ -686,10 +722,8 @@ function TaskEditor({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
-        <Field label="Title"><input value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} className={inputClass} /></Field>
         <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>
         <Field label="Subsection"><input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className={inputClass} /></Field>
-        <Field label="Topic title"><input value={draft.topic_title} onChange={(event) => onChange({ ...draft, topic_title: event.target.value })} className={inputClass} /></Field>
         <Field label="Difficulty">
           <select value={draft.difficulty} onChange={(event) => onChange({ ...draft, difficulty: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-white">
             <option value="easy">easy</option>
@@ -708,52 +742,80 @@ function TaskEditor({
         </label>
       </div>
 
-      <Field label="Problem text"><textarea value={draft.problem_text} onChange={(event) => onChange({ ...draft, problem_text: event.target.value })} className={`${textareaClass} min-h-32`} /></Field>
-      <Field label="Given"><textarea value={draft.given_data} onChange={(event) => onChange({ ...draft, given_data: event.target.value })} className={`${textareaClass} min-h-24`} /></Field>
-      <Field label="Find"><textarea value={draft.find_text} onChange={(event) => onChange({ ...draft, find_text: event.target.value })} className={`${textareaClass} min-h-20`} /></Field>
-      <Field label="Solution"><textarea value={draft.solution} onChange={(event) => onChange({ ...draft, solution: event.target.value })} className={`${textareaClass} min-h-44`} /></Field>
-      <Field label="Answer"><textarea value={draft.answer} onChange={(event) => onChange({ ...draft, answer: event.target.value })} className={`${textareaClass} min-h-20`} /></Field>
-
       <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
         <div>
-          <h3 className="text-xl font-black text-slate-900 dark:text-white">Translations</h3>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Task content</h3>
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-            Keep numbers, units, formulas and final answer identical to the Russian source.
+            Edit Russian source and translations side by side. Keep numbers, units, formulas and final answer identical.
           </p>
         </div>
-        {translationLanguages.map((language) => (
-          <div key={language.code} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/70">
-            <div className="mb-4">
-              <h4 className="font-black text-slate-900 dark:text-white">{language.label}</h4>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{language.hint}</p>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field label="Title">
-                <input value={translationText(draft.translations, language.code, 'title')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'title', event.target.value) })} className={inputClass} placeholder={draft.title} />
-              </Field>
-              <Field label="Topic title">
-                <input value={translationText(draft.translations, language.code, 'topic_title')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'topic_title', event.target.value) })} className={inputClass} placeholder={draft.topic_title} />
-              </Field>
-            </div>
-            <Field label="Problem text">
-              <textarea value={translationText(draft.translations, language.code, 'problem_text')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'problem_text', event.target.value) })} className={`${textareaClass} min-h-28`} placeholder={draft.problem_text} />
-            </Field>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field label="Given">
-                <textarea value={translationText(draft.translations, language.code, 'given_data')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'given_data', event.target.value) })} className={`${textareaClass} min-h-24`} placeholder={draft.given_data} />
-              </Field>
-              <Field label="Find">
-                <textarea value={translationText(draft.translations, language.code, 'find_text')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'find_text', event.target.value) })} className={`${textareaClass} min-h-24`} placeholder={draft.find_text} />
-              </Field>
-            </div>
-            <Field label="Solution">
-              <textarea value={translationText(draft.translations, language.code, 'solution')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'solution', event.target.value) })} className={`${textareaClass} min-h-36`} placeholder={draft.solution} />
-            </Field>
-            <Field label="Answer">
-              <textarea value={translationText(draft.translations, language.code, 'answer')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'answer', event.target.value) })} className={`${textareaClass} min-h-20`} placeholder={draft.answer} />
-            </Field>
-          </div>
-        ))}
+        <MultilingualInputRow
+          label="Title"
+          russian={draft.title}
+          english={translationText(draft.translations, 'en', 'title')}
+          kazakh={translationText(draft.translations, 'kk', 'title')}
+          onRussianChange={(value) => onChange({ ...draft, title: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'title', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'title', value) })}
+        />
+        <MultilingualInputRow
+          label="Topic title"
+          russian={draft.topic_title}
+          english={translationText(draft.translations, 'en', 'topic_title')}
+          kazakh={translationText(draft.translations, 'kk', 'topic_title')}
+          onRussianChange={(value) => onChange({ ...draft, topic_title: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'topic_title', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'topic_title', value) })}
+        />
+        <MultilingualTextareaRow
+          label="Problem text"
+          russian={draft.problem_text}
+          english={translationText(draft.translations, 'en', 'problem_text')}
+          kazakh={translationText(draft.translations, 'kk', 'problem_text')}
+          onRussianChange={(value) => onChange({ ...draft, problem_text: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'problem_text', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'problem_text', value) })}
+          minHeight="min-h-32"
+        />
+        <MultilingualTextareaRow
+          label="Given"
+          russian={draft.given_data}
+          english={translationText(draft.translations, 'en', 'given_data')}
+          kazakh={translationText(draft.translations, 'kk', 'given_data')}
+          onRussianChange={(value) => onChange({ ...draft, given_data: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'given_data', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'given_data', value) })}
+        />
+        <MultilingualTextareaRow
+          label="Find"
+          russian={draft.find_text}
+          english={translationText(draft.translations, 'en', 'find_text')}
+          kazakh={translationText(draft.translations, 'kk', 'find_text')}
+          onRussianChange={(value) => onChange({ ...draft, find_text: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'find_text', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'find_text', value) })}
+          minHeight="min-h-20"
+        />
+        <MultilingualTextareaRow
+          label="Solution"
+          russian={draft.solution}
+          english={translationText(draft.translations, 'en', 'solution')}
+          kazakh={translationText(draft.translations, 'kk', 'solution')}
+          onRussianChange={(value) => onChange({ ...draft, solution: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'solution', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'solution', value) })}
+          minHeight="min-h-44"
+        />
+        <MultilingualTextareaRow
+          label="Answer"
+          russian={draft.answer}
+          english={translationText(draft.translations, 'en', 'answer')}
+          kazakh={translationText(draft.translations, 'kk', 'answer')}
+          onRussianChange={(value) => onChange({ ...draft, answer: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'answer', value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'answer', value) })}
+          minHeight="min-h-20"
+        />
       </div>
     </div>
   )
