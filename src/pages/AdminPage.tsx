@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Database, FileText, FlaskConical, FunctionSquare, Layers3, Plus, RefreshCw, Save, Search, ShieldCheck, Trash2 } from 'lucide-react'
-import { BlockMath } from 'react-katex'
+import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -652,19 +652,6 @@ function TaskEditor({
   onSave: () => void
   onDelete: () => void
 }) {
-  const formulaTranslations = useMemo(() => {
-    try {
-      return parseJsonObject(draft.translationsText, 'Translations')
-    } catch {
-      return {}
-    }
-  }, [draft.translationsText])
-
-  const updateFormulaTranslation = (language: TranslationLanguage, key: string, value: string) => {
-    const translations = setTranslationText(formulaTranslations, language, key, value)
-    onChange({ ...draft, translationsText: JSON.stringify(translations, null, 2) })
-  }
-
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -764,9 +751,15 @@ function FormulaPreview({ formula }: { formula: string }) {
   }
 
   try {
+    const html = katex.renderToString(formula, {
+      displayMode: true,
+      throwOnError: false,
+      strict: false,
+    })
+
     return (
       <div className="overflow-x-auto rounded-2xl border border-primary-500/20 bg-primary-50 p-5 text-slate-950 dark:bg-primary-500/10 dark:text-white">
-        <BlockMath math={formula} />
+        <div dangerouslySetInnerHTML={{ __html: html }} />
       </div>
     )
   } catch {
@@ -789,6 +782,19 @@ function FormulaEditor({
   onSave: () => void
   onDelete: () => void
 }) {
+  const formulaTranslations = useMemo(() => {
+    try {
+      return parseJsonObject(draft.translationsText, 'Translations')
+    } catch {
+      return {}
+    }
+  }, [draft.translationsText])
+
+  const updateFormulaTranslation = (language: TranslationLanguage, key: string, value: string) => {
+    const translations = setTranslationText(formulaTranslations, language, key, value)
+    onChange({ ...draft, translationsText: JSON.stringify(translations, null, 2) })
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
