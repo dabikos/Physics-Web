@@ -8,8 +8,9 @@ import { useTheme } from '@/contexts/ThemeContext'
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
 const ADMIN_PAGE_SIZE = 100
 
-type ContentTab = 'overview' | 'tests' | 'tasks' | 'formulas'
-type AdminItem = Record<string, unknown> & { id?: string; title?: string; name?: string; section_id?: string; subsection_id?: string; is_published?: boolean }
+type ContentTab = 'overview' | 'lessons' | 'tests' | 'tasks' | 'formulas'
+type LessonKind = 'sections' | 'subsections' | 'topics'
+type AdminItem = Record<string, unknown> & { id?: string; title?: string; name?: string; section_id?: string; subsection_id?: string; is_published?: boolean; lesson_kind?: LessonKind }
 
 type TestQuestionDraft = {
   question: string
@@ -65,6 +66,24 @@ type FormulaDraft = {
   is_published: boolean
 }
 
+type LessonDraft = {
+  kind: LessonKind
+  id: string
+  section_id: string
+  subsection_id: string
+  name: string
+  title: string
+  brief_info: string
+  example_problem: string
+  formulasText: string
+  videoText: string
+  translations: Record<string, unknown>
+  icon: string
+  color: string
+  order_index: number
+  is_published: boolean
+}
+
 type OverviewTotals = {
   sections: number
   subsections: number
@@ -98,6 +117,7 @@ type TranslationLanguage = 'en' | 'kk'
 
 const tabs: { id: ContentTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'lessons', label: 'Lessons' },
   { id: 'tests', label: 'Tests' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'formulas', label: 'Formulas' },
@@ -291,6 +311,135 @@ function formulaDraftToPayload(draft: FormulaDraft): AdminItem {
     translations: parseJsonObject(draft.translationsText, 'Translations'),
     order_index: draft.order_index,
     is_published: draft.is_published,
+  }
+}
+
+function parseJsonValue(value: string, fieldName: string) {
+  try {
+    return value.trim() ? JSON.parse(value) : null
+  } catch {
+    throw new Error(`${fieldName} contains invalid JSON.`)
+  }
+}
+
+function toLessonDraft(item: AdminItem): LessonDraft {
+  const kind = item.lesson_kind || 'topics'
+  return {
+    kind,
+    id: String(item.id || ''),
+    section_id: String(item.section_id || (kind === 'sections' ? item.id || '' : '')),
+    subsection_id: String(item.subsection_id || (kind === 'subsections' ? item.id || '' : '')),
+    name: String(item.name || ''),
+    title: String(item.title || ''),
+    brief_info: String(item.brief_info || ''),
+    example_problem: String(item.example_problem || ''),
+    formulasText: stringifyJsonField(item.formulas || []),
+    videoText: stringifyJsonField(item.video),
+    translations: typeof item.translations === 'object' && item.translations !== null && !Array.isArray(item.translations) ? item.translations as Record<string, unknown> : {},
+    icon: String(item.icon || ''),
+    color: String(item.color || ''),
+    order_index: Number.isFinite(Number(item.order_index)) ? Number(item.order_index) : 0,
+    is_published: item.is_published !== false,
+  }
+}
+
+function validateLessonDraft(draft: LessonDraft) {
+  if (!draft.id.trim()) return 'ID is required.'
+  if (draft.kind === 'sections' && !draft.name.trim()) return 'Section name is required.'
+  if (draft.kind === 'subsections') {
+    if (!draft.section_id.trim()) return 'Section is required.'
+    if (!draft.name.trim()) return 'Subsection name is required.'
+  }
+  if (draft.kind === 'topics') {
+    if (!draft.section_id.trim()) return 'Section is required.'
+    if (!draft.subsection_id.trim()) return 'Subsection is required.'
+    if (!draft.title.trim()) return 'Topic title is required.'
+    const formulas = parseJsonValue(draft.formulasText, 'Formulas')
+    if (!Array.isArray(formulas)) return 'Formulas must be a JSON array.'
+    const video = parseJsonValue(draft.videoText, 'Video')
+    if (video !== null && (typeof video !== 'object' || Array.isArray(video))) return 'Video must be a JSON object.'
+  }
+  return null
+}
+
+function lessonDraftToPayload(draft: LessonDraft): AdminItem {
+  if (draft.kind === 'sections') {
+    return {
+      id: draft.id.trim(),
+      name: draft.name.trim(),
+      translations: draft.translations,
+      icon: draft.icon.trim() || null,
+      color: draft.color.trim() || null,
+      order_index: draft.order_index,
+      is_published: draft.is_published,
+    }
+  }
+
+  if (draft.kind === 'subsections') {
+    return {
+      id: draft.id.trim(),
+      section_id: draft.section_id.trim(),
+      name: draft.name.trim(),
+      translations: draft.translations,
+      order_index: draft.order_index,
+      is_published: draft.is_published,
+    }
+  }
+
+  return {
+    id: draft.id.trim(),
+    section_id: draft.section_id.trim(),
+    subsection_id: draft.subsection_id.trim(),
+    title: draft.title.trim(),
+    brief_info: draft.brief_info.trim(),
+    example_problem: draft.example_problem.trim(),
+    formulas: parseJsonValue(draft.formulasText, 'Formulas') || [],
+    video: parseJsonValue(draft.videoText, 'Video'),
+    translations: draft.translations,
+    order_index: draft.order_index,
+    is_published: draft.is_published,
+  }
+}
+
+function createLessonTemplate(kind: LessonKind): AdminItem {
+  if (kind === 'sections') {
+    return {
+      lesson_kind: 'sections',
+      id: '',
+      name: 'New section',
+      translations: {},
+      icon: '',
+      color: '#6366F1',
+      order_index: 0,
+      is_published: true,
+    }
+  }
+
+  if (kind === 'subsections') {
+    return {
+      lesson_kind: 'subsections',
+      id: '',
+      section_id: 'mechanics',
+      name: 'New subsection',
+      translations: {},
+      order_index: 0,
+      is_published: true,
+    }
+  }
+
+  return {
+    lesson_kind: 'topics',
+    id: '',
+    section_id: 'mechanics',
+    subsection_id: '',
+    title: 'New topic',
+    brief_info: '',
+    example_problem: '',
+    formulas: [],
+    video: {},
+    translations: {},
+    order_index: 0,
+    is_published: true,
   }
 }
 
@@ -688,6 +837,106 @@ function MultilingualTextareaRow({
   )
 }
 
+function LessonEditor({
+  draft,
+  saving,
+  selectedItem,
+  onChange,
+  onSave,
+  onDelete,
+}: {
+  draft: LessonDraft
+  saving: boolean
+  selectedItem: AdminItem | null
+  onChange: (draft: LessonDraft) => void
+  onSave: () => void
+  onDelete: () => void
+}) {
+  const titleKey = draft.kind === 'topics' ? 'title' : 'name'
+  const russianTitle = draft.kind === 'topics' ? draft.title : draft.name
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">Lesson editor</h2>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Edit sections, subsections and topics in one protected workflow.</p>
+        </div>
+        <div className="flex gap-2">
+          <button disabled={saving} onClick={onSave} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Save size={18} /> {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button disabled={saving || !selectedItem?.id} onClick={onDelete} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            <Trash2 size={18} /> Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="Type"><input value={draft.kind} disabled className={`${inputClass} opacity-70`} /></Field>
+        <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
+        {draft.kind !== 'sections' && <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>}
+        {draft.kind === 'topics' && <Field label="Subsection"><input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className={inputClass} /></Field>}
+        {draft.kind === 'sections' && <Field label="Icon"><input value={draft.icon} onChange={(event) => onChange({ ...draft, icon: event.target.value })} className={inputClass} /></Field>}
+        {draft.kind === 'sections' && <Field label="Color"><input value={draft.color} onChange={(event) => onChange({ ...draft, color: event.target.value })} className={inputClass} /></Field>}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Field label="Order"><input type="number" value={draft.order_index} onChange={(event) => onChange({ ...draft, order_index: Number(event.target.value) || 0 })} className={inputClass} /></Field>
+        <label className="mt-7 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <input type="checkbox" checked={draft.is_published} onChange={(event) => onChange({ ...draft, is_published: event.target.checked })} className="h-5 w-5" />
+          Published
+        </label>
+      </div>
+
+      <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
+        <h3 className="text-xl font-black text-slate-900 dark:text-white">Lesson content</h3>
+        <MultilingualInputRow
+          label={draft.kind === 'topics' ? 'Topic title' : 'Name'}
+          russian={russianTitle}
+          english={translationText(draft.translations, 'en', titleKey)}
+          kazakh={translationText(draft.translations, 'kk', titleKey)}
+          onRussianChange={(value) => onChange(draft.kind === 'topics' ? { ...draft, title: value } : { ...draft, name: value })}
+          onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', titleKey, value) })}
+          onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', titleKey, value) })}
+        />
+
+        {draft.kind === 'topics' && (
+          <>
+            <MultilingualTextareaRow
+              label="Brief info"
+              russian={draft.brief_info}
+              english={translationText(draft.translations, 'en', 'brief_info')}
+              kazakh={translationText(draft.translations, 'kk', 'brief_info')}
+              onRussianChange={(value) => onChange({ ...draft, brief_info: value })}
+              onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'brief_info', value) })}
+              onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'brief_info', value) })}
+              minHeight="min-h-36"
+            />
+            <MultilingualTextareaRow
+              label="Example problem"
+              russian={draft.example_problem}
+              english={translationText(draft.translations, 'en', 'example_problem')}
+              kazakh={translationText(draft.translations, 'kk', 'example_problem')}
+              onRussianChange={(value) => onChange({ ...draft, example_problem: value })}
+              onEnglishChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'en', 'example_problem', value) })}
+              onKazakhChange={(value) => onChange({ ...draft, translations: setTranslationText(draft.translations, 'kk', 'example_problem', value) })}
+              minHeight="min-h-36"
+            />
+          </>
+        )}
+      </div>
+
+      {draft.kind === 'topics' && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Formulas JSON array"><textarea value={draft.formulasText} onChange={(event) => onChange({ ...draft, formulasText: event.target.value })} className={`${textareaClass} min-h-40 font-mono text-sm`} /></Field>
+          <Field label="Video JSON object"><textarea value={draft.videoText} onChange={(event) => onChange({ ...draft, videoText: event.target.value })} className={`${textareaClass} min-h-40 font-mono text-sm`} /></Field>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TaskEditor({
   draft,
   saving,
@@ -1067,6 +1316,8 @@ export function AdminPage() {
   const [totalItems, setTotalItems] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editorValue, setEditorValue] = useState('')
+  const [lessonDraft, setLessonDraft] = useState<LessonDraft | null>(null)
+  const [lessonKind, setLessonKind] = useState<LessonKind>('topics')
   const [testDraft, setTestDraft] = useState<TestDraft | null>(null)
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
   const [formulaDraft, setFormulaDraft] = useState<FormulaDraft | null>(null)
@@ -1100,6 +1351,8 @@ export function AdminPage() {
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     return items.filter((item) => {
+      if (sectionFilter && item.section_id !== sectionFilter) return false
+      if (subsectionFilter && item.subsection_id !== subsectionFilter) return false
       if (publishFilter === 'published' && !item.is_published) return false
       if (publishFilter === 'draft' && item.is_published) return false
       if (!query) return true
@@ -1115,7 +1368,7 @@ export function AdminPage() {
 
       return haystack.some((value) => value.includes(query))
     })
-  }, [items, publishFilter, searchQuery])
+  }, [items, publishFilter, searchQuery, sectionFilter, subsectionFilter])
   const cards = useMemo(() => {
     if (!overview) return []
     return [
@@ -1184,7 +1437,13 @@ export function AdminPage() {
       if ((tab === 'tests' || tab === 'tasks') && subsectionFilter) params.set('subsection_id', subsectionFilter)
 
       const data = await adminFetch(`/api/admin/content/${tab}?${params.toString()}`)
-      const nextItems = data.items || []
+      const nextItems = tab === 'lessons'
+        ? [
+            ...(data.sections || []).map((item: AdminItem) => ({ ...item, lesson_kind: 'sections' as LessonKind, section_id: item.id })),
+            ...(data.subsections || []).map((item: AdminItem) => ({ ...item, lesson_kind: 'subsections' as LessonKind })),
+            ...(data.topics || []).map((item: AdminItem) => ({ ...item, lesson_kind: 'topics' as LessonKind })),
+          ]
+        : data.items || []
       const mergedItems = append ? [...items, ...nextItems] : nextItems
       setItems(mergedItems)
       setTotalItems(Number(data.total || mergedItems.length))
@@ -1192,6 +1451,7 @@ export function AdminPage() {
         const first = nextItems[0] || null
         setSelectedId(first?.id || null)
         setEditorValue(first ? JSON.stringify(first, null, 2) : '')
+        setLessonDraft(tab === 'lessons' && first ? toLessonDraft(first) : null)
         setTestDraft(tab === 'tests' && first ? toTestDraft(first) : null)
         setTaskDraft(tab === 'tasks' && first ? toTaskDraft(first) : null)
         setFormulaDraft(tab === 'formulas' && first ? toFormulaDraft(first) : null)
@@ -1202,6 +1462,7 @@ export function AdminPage() {
       setTotalItems(0)
       setSelectedId(null)
       setEditorValue('')
+      setLessonDraft(null)
       setTestDraft(null)
       setTaskDraft(null)
       setFormulaDraft(null)
@@ -1218,6 +1479,7 @@ export function AdminPage() {
   function selectItem(item: AdminItem) {
     setSelectedId(item.id || null)
     setEditorValue(JSON.stringify(item, null, 2))
+    setLessonDraft(activeTab === 'lessons' ? toLessonDraft(item) : null)
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
     setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
@@ -1226,13 +1488,14 @@ export function AdminPage() {
   }
 
   function createNewItem() {
-    const item = createTemplate(activeTab)
+    const item = activeTab === 'lessons' ? createLessonTemplate(lessonKind) : createTemplate(activeTab)
     setSelectedId(null)
     setEditorValue(JSON.stringify(item, null, 2))
+    setLessonDraft(activeTab === 'lessons' ? toLessonDraft(item) : null)
     setTestDraft(activeTab === 'tests' ? toTestDraft(item) : null)
     setTaskDraft(activeTab === 'tasks' ? toTaskDraft(item) : null)
     setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(item) : null)
-    setNotice(activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : activeTab === 'tasks' ? 'Fill the form and press Save to create a new task.' : activeTab === 'formulas' ? 'Fill the form and press Save to create a new formula.' : 'Fill JSON and press Save to create a new item.')
+    setNotice(activeTab === 'lessons' ? `Fill the form and press Save to create a new lesson ${lessonKind.slice(0, -1)}.` : activeTab === 'tests' ? 'Fill the form and press Save to create a new test.' : activeTab === 'tasks' ? 'Fill the form and press Save to create a new task.' : activeTab === 'formulas' ? 'Fill the form and press Save to create a new formula.' : 'Fill JSON and press Save to create a new item.')
     setError(null)
   }
 
@@ -1248,7 +1511,13 @@ export function AdminPage() {
           ? taskDraftToPayload(taskDraft)
           : activeTab === 'formulas' && formulaDraft
             ? formulaDraftToPayload(formulaDraft)
-            : JSON.parse(editorValue) as AdminItem
+            : activeTab === 'lessons' && lessonDraft
+              ? lessonDraftToPayload(lessonDraft)
+              : JSON.parse(editorValue) as AdminItem
+      if (activeTab === 'lessons' && lessonDraft) {
+        const validationError = validateLessonDraft(lessonDraft)
+        if (validationError) throw new Error(validationError)
+      }
       if (activeTab === 'tests' && testDraft) {
         const validationError = validateTestDraft(testDraft)
         if (validationError) throw new Error(validationError)
@@ -1263,15 +1532,21 @@ export function AdminPage() {
       }
       const id = String(payload.id || '').trim()
       const isUpdate = Boolean(id && selectedItem?.id === id)
-      const endpoint = isUpdate ? `/api/admin/content/${activeTab}/${encodeURIComponent(id)}` : `/api/admin/content/${activeTab}`
+      const endpoint = activeTab === 'lessons' && lessonDraft
+        ? isUpdate
+          ? `/api/admin/content/lessons/${lessonDraft.kind}/${encodeURIComponent(id)}`
+          : `/api/admin/content/lessons/${lessonDraft.kind}`
+        : isUpdate ? `/api/admin/content/${activeTab}/${encodeURIComponent(id)}` : `/api/admin/content/${activeTab}`
       const method = isUpdate ? 'PUT' : 'POST'
       const data = await adminFetch(endpoint, { method, body: JSON.stringify(payload) })
       const savedItem = data.item as AdminItem
       setNotice(isUpdate ? 'Saved.' : 'Created.')
       await loadItems(activeTab)
       if (savedItem?.id) {
+        const normalizedSavedItem = activeTab === 'lessons' && lessonDraft ? { ...savedItem, lesson_kind: lessonDraft.kind } : savedItem
         setSelectedId(savedItem.id)
-        setEditorValue(JSON.stringify(savedItem, null, 2))
+        setEditorValue(JSON.stringify(normalizedSavedItem, null, 2))
+        setLessonDraft(activeTab === 'lessons' ? toLessonDraft(normalizedSavedItem) : null)
         setTestDraft(activeTab === 'tests' ? toTestDraft(savedItem) : null)
         setTaskDraft(activeTab === 'tasks' ? toTaskDraft(savedItem) : null)
         setFormulaDraft(activeTab === 'formulas' ? toFormulaDraft(savedItem) : null)
@@ -1292,7 +1567,10 @@ export function AdminPage() {
     setError(null)
     setNotice(null)
     try {
-      await adminFetch(`/api/admin/content/${activeTab}/${encodeURIComponent(selectedItem.id)}`, { method: 'DELETE' })
+      const endpoint = activeTab === 'lessons' && selectedItem.lesson_kind
+        ? `/api/admin/content/lessons/${selectedItem.lesson_kind}/${encodeURIComponent(selectedItem.id)}`
+        : `/api/admin/content/${activeTab}/${encodeURIComponent(selectedItem.id)}`
+      await adminFetch(endpoint, { method: 'DELETE' })
       setNotice('Deleted.')
       await loadItems(activeTab)
     } catch (deleteError) {
@@ -1401,9 +1679,22 @@ export function AdminPage() {
                     Loaded {items.length} of {totalItems || items.length}. Visible {filteredItems.length}.
                   </p>
                 </div>
-                <button onClick={createNewItem} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
-                  <Plus size={18} /> New
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {activeTab === 'lessons' && (
+                    <select
+                      value={lessonKind}
+                      onChange={(event) => setLessonKind(event.target.value as LessonKind)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none dark:border-white/10 dark:bg-slate-950 dark:text-slate-200"
+                    >
+                      <option value="sections">Section</option>
+                      <option value="subsections">Subsection</option>
+                      <option value="topics">Topic</option>
+                    </select>
+                  )}
+                  <button onClick={createNewItem} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
+                    <Plus size={18} /> New
+                  </button>
+                </div>
               </div>
 
               <div className="mb-4 space-y-3">
@@ -1463,7 +1754,9 @@ export function AdminPage() {
                       className={`w-full rounded-2xl border p-4 text-left transition ${selectedId === item.id ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10' : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10'}`}
                     >
                       <div className="truncate font-black text-slate-900 dark:text-white">{itemTitle(item)}</div>
-                      <div className="mt-1 truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{item.section_id} / {item.subsection_id || 'no subsection'}</div>
+                      <div className="mt-1 truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        {activeTab === 'lessons' ? `${item.lesson_kind} / ${item.section_id || item.id}${item.subsection_id ? ` / ${item.subsection_id}` : ''}` : `${item.section_id} / ${item.subsection_id || 'no subsection'}`}
+                      </div>
                       <div className="mt-2 text-xs font-bold text-slate-400">{item.id}</div>
                     </button>
                   ))}
@@ -1486,7 +1779,23 @@ export function AdminPage() {
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-5 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-black/20">
-              {activeTab === 'tests' && testDraft ? (
+              {activeTab === 'lessons' && lessonDraft ? (
+                <LessonEditor
+                  draft={lessonDraft}
+                  saving={saving}
+                  selectedItem={selectedItem}
+                  onChange={(nextDraft) => {
+                    setLessonDraft(nextDraft)
+                    try {
+                      setEditorValue(JSON.stringify(lessonDraftToPayload(nextDraft), null, 2))
+                    } catch {
+                      setEditorValue(JSON.stringify({ ...nextDraft }, null, 2))
+                    }
+                  }}
+                  onSave={() => void saveItem()}
+                  onDelete={() => void deleteItem()}
+                />
+              ) : activeTab === 'tests' && testDraft ? (
                 <TestEditor
                   draft={testDraft}
                   saving={saving}
