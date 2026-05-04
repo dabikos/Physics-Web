@@ -94,6 +94,8 @@ type OverviewResponse = {
   sections: SectionOverview[]
 }
 
+type TranslationLanguage = 'en' | 'kk'
+
 const tabs: { id: ContentTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'tests', label: 'Tests' },
@@ -349,6 +351,86 @@ function itemTitle(item: AdminItem) {
   return String(item.title || item.name || item.id || 'Untitled')
 }
 
+const translationLanguages: { code: TranslationLanguage; label: string; hint: string }[] = [
+  { code: 'en', label: 'English', hint: 'Shown when the app language is English.' },
+  { code: 'kk', label: 'Kazakh', hint: 'Shown when the app language is Kazakh.' },
+]
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function getTranslation(translations: Record<string, unknown>, language: TranslationLanguage) {
+  return asRecord(translations[language])
+}
+
+function setTranslation(
+  translations: Record<string, unknown>,
+  language: TranslationLanguage,
+  updater: (current: Record<string, unknown>) => Record<string, unknown>,
+) {
+  return {
+    ...translations,
+    [language]: updater(getTranslation(translations, language)),
+  }
+}
+
+function translationText(translations: Record<string, unknown>, language: TranslationLanguage, key: string) {
+  return String(getTranslation(translations, language)[key] || '')
+}
+
+function translationQuestions(translations: Record<string, unknown>, language: TranslationLanguage) {
+  const questions = getTranslation(translations, language).questions
+  return Array.isArray(questions) ? questions.map(asRecord) : []
+}
+
+function setTranslationText(
+  translations: Record<string, unknown>,
+  language: TranslationLanguage,
+  key: string,
+  value: string,
+) {
+  return setTranslation(translations, language, (current) => ({ ...current, [key]: value }))
+}
+
+function setTranslationQuestion(
+  translations: Record<string, unknown>,
+  language: TranslationLanguage,
+  questionIndex: number,
+  updater: (question: Record<string, unknown>) => Record<string, unknown>,
+) {
+  return setTranslation(translations, language, (current) => {
+    const questions = Array.isArray(current.questions) ? current.questions.map(asRecord) : []
+    while (questions.length <= questionIndex) questions.push({})
+    questions[questionIndex] = updater(questions[questionIndex])
+    return { ...current, questions }
+  })
+}
+
+function translationQuestionText(translations: Record<string, unknown>, language: TranslationLanguage, questionIndex: number, key: string) {
+  return String(translationQuestions(translations, language)[questionIndex]?.[key] || '')
+}
+
+function translationOptionText(translations: Record<string, unknown>, language: TranslationLanguage, questionIndex: number, optionIndex: number) {
+  const options = translationQuestions(translations, language)[questionIndex]?.options
+  return String(Array.isArray(options) ? options[optionIndex] || '' : '')
+}
+
+function setTranslationOption(
+  translations: Record<string, unknown>,
+  language: TranslationLanguage,
+  questionIndex: number,
+  optionIndex: number,
+  value: string,
+) {
+  return setTranslationQuestion(translations, language, questionIndex, (question) => {
+    const options = Array.isArray(question.options) ? question.options.map(String) : []
+    while (options.length <= optionIndex) options.push('')
+    options[optionIndex] = value
+    return { ...question, options }
+  })
+}
+
 
 function TestEditor({
   draft,
@@ -447,6 +529,31 @@ function TestEditor({
         Published
       </label>
 
+      <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
+        <div>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Translations</h3>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Translate text only. Correct answer indexes are shared from the Russian version.
+          </p>
+        </div>
+        {translationLanguages.map((language) => (
+          <div key={language.code} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/70">
+            <div className="mb-4">
+              <h4 className="font-black text-slate-900 dark:text-white">{language.label}</h4>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{language.hint}</p>
+            </div>
+            <Field label={`${language.label} title`}>
+              <input
+                value={translationText(draft.translations, language.code, 'title')}
+                onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'title', event.target.value) })}
+                className={inputClass}
+                placeholder={draft.title}
+              />
+            </Field>
+          </div>
+        ))}
+      </div>
+
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-xl font-black text-slate-900 dark:text-white">Questions</h3>
@@ -471,6 +578,45 @@ function TestEditor({
               ))}
             </div>
             <textarea value={question.explanation || ''} onChange={(event) => updateQuestion(questionIndex, (current) => ({ ...current, explanation: event.target.value }))} className="mt-4 min-h-20 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-950 dark:text-white" placeholder="Explanation" />
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              {translationLanguages.map((language) => (
+                <div key={language.code} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
+                  <div className="mb-3 font-black text-slate-900 dark:text-white">{language.label} translation</div>
+                  <textarea
+                    value={translationQuestionText(draft.translations, language.code, questionIndex, 'question')}
+                    onChange={(event) => onChange({
+                      ...draft,
+                      translations: setTranslationQuestion(draft.translations, language.code, questionIndex, (current) => ({ ...current, question: event.target.value })),
+                    })}
+                    className={`${textareaClass} min-h-20`}
+                    placeholder={question.question}
+                  />
+                  <div className="mt-3 grid gap-2">
+                    {question.options.map((option, optionIndex) => (
+                      <input
+                        key={optionIndex}
+                        value={translationOptionText(draft.translations, language.code, questionIndex, optionIndex)}
+                        onChange={(event) => onChange({
+                          ...draft,
+                          translations: setTranslationOption(draft.translations, language.code, questionIndex, optionIndex, event.target.value),
+                        })}
+                        className={inputClass}
+                        placeholder={option || `Option ${optionIndex + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <textarea
+                    value={translationQuestionText(draft.translations, language.code, questionIndex, 'explanation')}
+                    onChange={(event) => onChange({
+                      ...draft,
+                      translations: setTranslationQuestion(draft.translations, language.code, questionIndex, (current) => ({ ...current, explanation: event.target.value })),
+                    })}
+                    className={`${textareaClass} mt-3 min-h-20`}
+                    placeholder={question.explanation || 'Explanation'}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -506,6 +652,19 @@ function TaskEditor({
   onSave: () => void
   onDelete: () => void
 }) {
+  const formulaTranslations = useMemo(() => {
+    try {
+      return parseJsonObject(draft.translationsText, 'Translations')
+    } catch {
+      return {}
+    }
+  }, [draft.translationsText])
+
+  const updateFormulaTranslation = (language: TranslationLanguage, key: string, value: string) => {
+    const translations = setTranslationText(formulaTranslations, language, key, value)
+    onChange({ ...draft, translationsText: JSON.stringify(translations, null, 2) })
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -552,6 +711,48 @@ function TaskEditor({
       <Field label="Find"><textarea value={draft.find_text} onChange={(event) => onChange({ ...draft, find_text: event.target.value })} className={`${textareaClass} min-h-20`} /></Field>
       <Field label="Solution"><textarea value={draft.solution} onChange={(event) => onChange({ ...draft, solution: event.target.value })} className={`${textareaClass} min-h-44`} /></Field>
       <Field label="Answer"><textarea value={draft.answer} onChange={(event) => onChange({ ...draft, answer: event.target.value })} className={`${textareaClass} min-h-20`} /></Field>
+
+      <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
+        <div>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Translations</h3>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Keep numbers, units, formulas and final answer identical to the Russian source.
+          </p>
+        </div>
+        {translationLanguages.map((language) => (
+          <div key={language.code} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/70">
+            <div className="mb-4">
+              <h4 className="font-black text-slate-900 dark:text-white">{language.label}</h4>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{language.hint}</p>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Title">
+                <input value={translationText(draft.translations, language.code, 'title')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'title', event.target.value) })} className={inputClass} placeholder={draft.title} />
+              </Field>
+              <Field label="Topic title">
+                <input value={translationText(draft.translations, language.code, 'topic_title')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'topic_title', event.target.value) })} className={inputClass} placeholder={draft.topic_title} />
+              </Field>
+            </div>
+            <Field label="Problem text">
+              <textarea value={translationText(draft.translations, language.code, 'problem_text')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'problem_text', event.target.value) })} className={`${textareaClass} min-h-28`} placeholder={draft.problem_text} />
+            </Field>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Given">
+                <textarea value={translationText(draft.translations, language.code, 'given_data')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'given_data', event.target.value) })} className={`${textareaClass} min-h-24`} placeholder={draft.given_data} />
+              </Field>
+              <Field label="Find">
+                <textarea value={translationText(draft.translations, language.code, 'find_text')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'find_text', event.target.value) })} className={`${textareaClass} min-h-24`} placeholder={draft.find_text} />
+              </Field>
+            </div>
+            <Field label="Solution">
+              <textarea value={translationText(draft.translations, language.code, 'solution')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'solution', event.target.value) })} className={`${textareaClass} min-h-36`} placeholder={draft.solution} />
+            </Field>
+            <Field label="Answer">
+              <textarea value={translationText(draft.translations, language.code, 'answer')} onChange={(event) => onChange({ ...draft, translations: setTranslationText(draft.translations, language.code, 'answer', event.target.value) })} className={`${textareaClass} min-h-20`} placeholder={draft.answer} />
+            </Field>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -624,7 +825,31 @@ function FormulaEditor({
       <FormulaPreview formula={draft.formula} />
       <Field label="Description"><textarea value={draft.description} onChange={(event) => onChange({ ...draft, description: event.target.value })} className={`${textareaClass} min-h-28`} /></Field>
       <Field label="Variables JSON"><textarea value={draft.variablesText} onChange={(event) => onChange({ ...draft, variablesText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
-      <Field label="Translations JSON"><textarea value={draft.translationsText} onChange={(event) => onChange({ ...draft, translationsText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
+
+      <div className="space-y-4 rounded-3xl border border-primary-500/20 bg-primary-50/60 p-5 dark:bg-primary-500/10">
+        <div>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white">Translations</h3>
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Translate formula name and explanation. LaTeX formula is shared.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {translationLanguages.map((language) => (
+            <div key={language.code} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950/70">
+              <div className="mb-4">
+                <h4 className="font-black text-slate-900 dark:text-white">{language.label}</h4>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{language.hint}</p>
+              </div>
+              <Field label="Name">
+                <input value={translationText(formulaTranslations, language.code, 'name')} onChange={(event) => updateFormulaTranslation(language.code, 'name', event.target.value)} className={inputClass} placeholder={draft.name} />
+              </Field>
+              <Field label="Description">
+                <textarea value={translationText(formulaTranslations, language.code, 'description')} onChange={(event) => updateFormulaTranslation(language.code, 'description', event.target.value)} className={`${textareaClass} min-h-28`} placeholder={draft.description} />
+              </Field>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Field label="Advanced translations JSON"><textarea value={draft.translationsText} onChange={(event) => onChange({ ...draft, translationsText: event.target.value })} className={`${textareaClass} min-h-32 font-mono text-sm`} /></Field>
     </div>
   )
 }
