@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Database, FileText, FlaskConical, FunctionSquare, Layers3, Plus, RefreshCw, Save, ShieldCheck, Trash2 } from 'lucide-react'
+import { Database, FileText, FlaskConical, FunctionSquare, Layers3, Plus, RefreshCw, Save, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { BlockMath } from 'react-katex'
 import 'katex/dist/katex.min.css'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+const ADMIN_PAGE_SIZE = 100
 
 type ContentTab = 'overview' | 'tests' | 'tasks' | 'formulas'
 type AdminItem = Record<string, unknown> & { id?: string; title?: string; name?: string; section_id?: string; subsection_id?: string; is_published?: boolean }
@@ -634,17 +635,58 @@ export function AdminPage() {
   const [activeTab, setActiveTab] = useState<ContentTab>('overview')
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
   const [items, setItems] = useState<AdminItem[]>([])
+  const [totalItems, setTotalItems] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editorValue, setEditorValue] = useState('')
   const [testDraft, setTestDraft] = useState<TestDraft | null>(null)
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
   const [formulaDraft, setFormulaDraft] = useState<FormulaDraft | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sectionFilter, setSectionFilter] = useState('')
+  const [subsectionFilter, setSubsectionFilter] = useState('')
+  const [publishFilter, setPublishFilter] = useState<'all' | 'published' | 'draft'>('all')
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedId) || null, [items, selectedId])
+  const sectionOptions = useMemo(() => {
+    const ids = new Set([
+      ...(overview?.sections || []).map((section) => section.id),
+      ...items.map((item) => String(item.section_id || '')).filter(Boolean),
+    ])
+    return [...ids].sort()
+  }, [items, overview])
+  const subsectionOptions = useMemo(() => {
+    const ids = new Set(
+      items
+        .filter((item) => !sectionFilter || item.section_id === sectionFilter)
+        .map((item) => String(item.subsection_id || ''))
+        .filter(Boolean),
+    )
+    return [...ids].sort()
+  }, [items, sectionFilter])
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    return items.filter((item) => {
+      if (publishFilter === 'published' && !item.is_published) return false
+      if (publishFilter === 'draft' && item.is_published) return false
+      if (!query) return true
+
+      const haystack = [
+        item.id,
+        item.title,
+        item.name,
+        item.section_id,
+        item.subsection_id,
+        item.topic_title,
+      ].map((value) => String(value || '').toLowerCase())
+
+      return haystack.some((value) => value.includes(query))
+    })
+  }, [items, publishFilter, searchQuery])
   const cards = useMemo(() => {
     if (!overview) return []
     return [
@@ -694,28 +736,41 @@ export function AdminPage() {
     }
   }
 
-  async function loadItems(tab: ContentTab) {
+  async function loadItems(tab: ContentTab, offset = 0, append = false) {
     if (tab === 'overview') {
       await loadOverview()
       return
     }
 
-    setLoading(true)
+    setLoading(!append)
+    setLoadingMore(append)
     setError(null)
     setNotice(null)
     try {
-      const data = await adminFetch(`/api/admin/content/${tab}?limit=100`)
+      const params = new URLSearchParams({
+        limit: String(ADMIN_PAGE_SIZE),
+        offset: String(offset),
+      })
+      if (sectionFilter) params.set('section_id', sectionFilter)
+      if ((tab === 'tests' || tab === 'tasks') && subsectionFilter) params.set('subsection_id', subsectionFilter)
+
+      const data = await adminFetch(`/api/admin/content/${tab}?${params.toString()}`)
       const nextItems = data.items || []
-      setItems(nextItems)
-      const first = nextItems[0] || null
-      setSelectedId(first?.id || null)
-      setEditorValue(first ? JSON.stringify(first, null, 2) : '')
-      setTestDraft(tab === 'tests' && first ? toTestDraft(first) : null)
-      setTaskDraft(tab === 'tasks' && first ? toTaskDraft(first) : null)
-      setFormulaDraft(tab === 'formulas' && first ? toFormulaDraft(first) : null)
+      const mergedItems = append ? [...items, ...nextItems] : nextItems
+      setItems(mergedItems)
+      setTotalItems(Number(data.total || mergedItems.length))
+      if (!append) {
+        const first = nextItems[0] || null
+        setSelectedId(first?.id || null)
+        setEditorValue(first ? JSON.stringify(first, null, 2) : '')
+        setTestDraft(tab === 'tests' && first ? toTestDraft(first) : null)
+        setTaskDraft(tab === 'tasks' && first ? toTaskDraft(first) : null)
+        setFormulaDraft(tab === 'formulas' && first ? toFormulaDraft(first) : null)
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : `Failed to load ${tab}`)
       setItems([])
+      setTotalItems(0)
       setSelectedId(null)
       setEditorValue('')
       setTestDraft(null)
@@ -723,7 +778,12 @@ export function AdminPage() {
       setFormulaDraft(null)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
+  }
+
+  async function loadMoreItems() {
+    await loadItems(activeTab, items.length, true)
   }
 
   function selectItem(item: AdminItem) {
@@ -816,7 +876,7 @@ export function AdminPage() {
   useEffect(() => {
     if (!token) return
     void loadItems(activeTab)
-  }, [activeTab, token])
+  }, [activeTab, token, sectionFilter, subsectionFilter])
 
   return (
     <main className="min-h-screen px-6 pb-12 pt-28 lg:px-10">
@@ -908,18 +968,66 @@ export function AdminPage() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-black capitalize text-slate-900 dark:text-white">{activeTab}</h2>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Showing first {items.length} items</p>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    Loaded {items.length} of {totalItems || items.length}. Visible {filteredItems.length}.
+                  </p>
                 </div>
                 <button onClick={createNewItem} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 font-bold text-white">
                   <Plus size={18} /> New
                 </button>
               </div>
 
+              <div className="mb-4 space-y-3">
+                <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                  <Search size={18} />
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent outline-none"
+                    placeholder="Search title, id, section..."
+                  />
+                </label>
+
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <select
+                    value={sectionFilter}
+                    onChange={(event) => {
+                      setSectionFilter(event.target.value)
+                      setSubsectionFilter('')
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none dark:border-white/10 dark:bg-slate-950 dark:text-slate-200"
+                  >
+                    <option value="">All sections</option>
+                    {sectionOptions.map((sectionId) => <option key={sectionId} value={sectionId}>{sectionId}</option>)}
+                  </select>
+
+                  <select
+                    value={subsectionFilter}
+                    onChange={(event) => setSubsectionFilter(event.target.value)}
+                    disabled={activeTab === 'formulas'}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none disabled:opacity-50 dark:border-white/10 dark:bg-slate-950 dark:text-slate-200"
+                  >
+                    <option value="">All subsections</option>
+                    {subsectionOptions.map((subsectionId) => <option key={subsectionId} value={subsectionId}>{subsectionId}</option>)}
+                  </select>
+
+                  <select
+                    value={publishFilter}
+                    onChange={(event) => setPublishFilter(event.target.value as 'all' | 'published' | 'draft')}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none dark:border-white/10 dark:bg-slate-950 dark:text-slate-200"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+
               {loading ? (
                 <div className="rounded-2xl bg-slate-50 p-5 text-center font-bold text-slate-500 dark:bg-white/5 dark:text-slate-300">Loading...</div>
               ) : (
                 <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
-                  {items.map((item) => (
+                  {filteredItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => selectItem(item)}
@@ -930,6 +1038,20 @@ export function AdminPage() {
                       <div className="mt-2 text-xs font-bold text-slate-400">{item.id}</div>
                     </button>
                   ))}
+                  {!filteredItems.length && (
+                    <div className="rounded-2xl bg-slate-50 p-5 text-center font-bold text-slate-500 dark:bg-white/5 dark:text-slate-300">
+                      No items match current filters.
+                    </div>
+                  )}
+                  {items.length < totalItems && (
+                    <button
+                      onClick={() => void loadMoreItems()}
+                      disabled={loadingMore}
+                      className="w-full rounded-2xl border border-dashed border-primary-300 px-4 py-3 font-black text-primary-600 transition hover:bg-primary-50 disabled:opacity-50 dark:border-primary-500/40 dark:hover:bg-primary-500/10"
+                    >
+                      {loadingMore ? 'Loading...' : 'Load more'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
