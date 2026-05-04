@@ -123,6 +123,15 @@ const tabs: { id: ContentTab; label: string }[] = [
   { id: 'formulas', label: 'Formulas' },
 ]
 
+function slugify(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 function StatCard({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
   return (
     <div className="rounded-3xl border border-white/10 bg-white/80 p-5 shadow-xl shadow-slate-200/50 backdrop-blur dark:bg-slate-900/70 dark:shadow-black/20">
@@ -612,6 +621,8 @@ function TestEditor({
   draft,
   saving,
   selectedItem,
+  sectionOptions,
+  subsectionOptions,
   onChange,
   onSave,
   onDelete,
@@ -619,6 +630,8 @@ function TestEditor({
   draft: TestDraft
   saving: boolean
   selectedItem: AdminItem | null
+  sectionOptions: string[]
+  subsectionOptions: string[]
   onChange: (draft: TestDraft) => void
   onSave: () => void
   onDelete: () => void
@@ -671,14 +684,8 @@ function TestEditor({
           <span className="text-xs font-black uppercase tracking-wide text-slate-500">Title</span>
           <input value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
         </label>
-        <label className="space-y-2">
-          <span className="text-xs font-black uppercase tracking-wide text-slate-500">Section</span>
-          <input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
-        </label>
-        <label className="space-y-2">
-          <span className="text-xs font-black uppercase tracking-wide text-slate-500">Subsection</span>
-          <input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white" />
-        </label>
+        <SectionSelect value={draft.section_id} options={sectionOptions} onChange={(value) => onChange({ ...draft, section_id: value, subsection_id: '' })} />
+        <SubsectionSelect value={draft.subsection_id} options={subsectionOptions} onChange={(value) => onChange({ ...draft, subsection_id: value })} />
         <label className="space-y-2">
           <span className="text-xs font-black uppercase tracking-wide text-slate-500">Difficulty</span>
           <select value={draft.difficulty} onChange={(event) => onChange({ ...draft, difficulty: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-white">
@@ -849,10 +856,50 @@ function MultilingualTextareaRow({
   )
 }
 
+function SectionSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <Field label="Section">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>
+        <option value="">Select section</option>
+        {options.map((sectionId) => <option key={sectionId} value={sectionId}>{sectionId}</option>)}
+      </select>
+    </Field>
+  )
+}
+
+function SubsectionSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <Field label="Subsection">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>
+        <option value="">Select subsection</option>
+        {options.map((subsectionId) => <option key={subsectionId} value={subsectionId}>{subsectionId}</option>)}
+      </select>
+    </Field>
+  )
+}
+
 function LessonEditor({
   draft,
   saving,
   selectedItem,
+  sectionOptions,
+  subsectionOptions,
   onChange,
   onSave,
   onDelete,
@@ -860,6 +907,8 @@ function LessonEditor({
   draft: LessonDraft
   saving: boolean
   selectedItem: AdminItem | null
+  sectionOptions: string[]
+  subsectionOptions: string[]
   onChange: (draft: LessonDraft) => void
   onSave: () => void
   onDelete: () => void
@@ -925,8 +974,8 @@ function LessonEditor({
       <div className="grid gap-4 lg:grid-cols-2">
         <Field label="Type"><input value={draft.kind} disabled className={`${inputClass} opacity-70`} /></Field>
         <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
-        {draft.kind !== 'sections' && <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>}
-        {draft.kind === 'topics' && <Field label="Subsection"><input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className={inputClass} /></Field>}
+        {draft.kind !== 'sections' && <SectionSelect value={draft.section_id} options={sectionOptions} onChange={(value) => onChange({ ...draft, section_id: value, subsection_id: draft.kind === 'topics' ? '' : draft.subsection_id })} />}
+        {draft.kind === 'topics' && <SubsectionSelect value={draft.subsection_id} options={subsectionOptions} onChange={(value) => onChange({ ...draft, subsection_id: value })} />}
         {draft.kind === 'sections' && <Field label="Icon"><input value={draft.icon} onChange={(event) => onChange({ ...draft, icon: event.target.value })} className={inputClass} /></Field>}
         {draft.kind === 'sections' && <Field label="Color"><input value={draft.color} onChange={(event) => onChange({ ...draft, color: event.target.value })} className={inputClass} /></Field>}
       </div>
@@ -1044,6 +1093,8 @@ function TaskEditor({
   draft,
   saving,
   selectedItem,
+  sectionOptions,
+  subsectionOptions,
   onChange,
   onSave,
   onDelete,
@@ -1051,6 +1102,8 @@ function TaskEditor({
   draft: TaskDraft
   saving: boolean
   selectedItem: AdminItem | null
+  sectionOptions: string[]
+  subsectionOptions: string[]
   onChange: (draft: TaskDraft) => void
   onSave: () => void
   onDelete: () => void
@@ -1074,8 +1127,8 @@ function TaskEditor({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
-        <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>
-        <Field label="Subsection"><input value={draft.subsection_id} onChange={(event) => onChange({ ...draft, subsection_id: event.target.value })} className={inputClass} /></Field>
+        <SectionSelect value={draft.section_id} options={sectionOptions} onChange={(value) => onChange({ ...draft, section_id: value, subsection_id: '' })} />
+        <SubsectionSelect value={draft.subsection_id} options={subsectionOptions} onChange={(value) => onChange({ ...draft, subsection_id: value })} />
         <Field label="Difficulty">
           <select value={draft.difficulty} onChange={(event) => onChange({ ...draft, difficulty: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-primary-500/20 dark:border-white/10 dark:bg-slate-900 dark:text-white">
             <option value="easy">easy</option>
@@ -1200,6 +1253,7 @@ function FormulaEditor({
   draft,
   saving,
   selectedItem,
+  sectionOptions,
   onChange,
   onSave,
   onDelete,
@@ -1207,6 +1261,7 @@ function FormulaEditor({
   draft: FormulaDraft
   saving: boolean
   selectedItem: AdminItem | null
+  sectionOptions: string[]
   onChange: (draft: FormulaDraft) => void
   onSave: () => void
   onDelete: () => void
@@ -1321,8 +1376,7 @@ function FormulaEditor({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Field label="ID"><input value={draft.id} onChange={(event) => onChange({ ...draft, id: event.target.value })} className={inputClass} /></Field>
-        <Field label="Name"><input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} className={inputClass} /></Field>
-        <Field label="Section"><input value={draft.section_id} onChange={(event) => onChange({ ...draft, section_id: event.target.value })} className={inputClass} /></Field>
+        <SectionSelect value={draft.section_id} options={sectionOptions} onChange={(value) => onChange({ ...draft, section_id: value })} />
         <Field label="Unit"><input value={draft.unit} onChange={(event) => onChange({ ...draft, unit: event.target.value })} className={inputClass} /></Field>
       </div>
 
@@ -1416,6 +1470,7 @@ export function AdminPage() {
   const [activeTab, setActiveTab] = useState<ContentTab>('overview')
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
   const [items, setItems] = useState<AdminItem[]>([])
+  const [lessonCatalog, setLessonCatalog] = useState<AdminItem[]>([])
   const [totalItems, setTotalItems] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editorValue, setEditorValue] = useState('')
@@ -1438,19 +1493,28 @@ export function AdminPage() {
   const sectionOptions = useMemo(() => {
     const ids = new Set([
       ...(overview?.sections || []).map((section) => section.id),
+      ...lessonCatalog.filter((item) => item.lesson_kind === 'sections').map((item) => String(item.id || '')),
       ...items.map((item) => String(item.section_id || '')).filter(Boolean),
     ])
     return [...ids].sort()
-  }, [items, overview])
-  const subsectionOptions = useMemo(() => {
+  }, [items, lessonCatalog, overview])
+  const getSubsectionOptions = (sectionId: string) => {
     const ids = new Set(
-      items
-        .filter((item) => !sectionFilter || item.section_id === sectionFilter)
-        .map((item) => String(item.subsection_id || ''))
+      lessonCatalog
+        .filter((item) => item.lesson_kind === 'subsections' && (!sectionId || item.section_id === sectionId))
+        .map((item) => String(item.id || ''))
         .filter(Boolean),
     )
+    items
+      .filter((item) => !sectionId || item.section_id === sectionId)
+      .map((item) => String(item.subsection_id || ''))
+      .filter(Boolean)
+      .forEach((subsectionId) => ids.add(subsectionId))
     return [...ids].sort()
-  }, [items, sectionFilter])
+  }
+  const subsectionOptions = useMemo(() => {
+    return getSubsectionOptions(sectionFilter)
+  }, [items, lessonCatalog, sectionFilter])
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     return items.filter((item) => {
@@ -1521,6 +1585,19 @@ export function AdminPage() {
     }
   }
 
+  async function loadLessonCatalog() {
+    try {
+      const data = await adminFetch('/api/admin/content/lessons?limit=500')
+      setLessonCatalog([
+        ...(data.sections || []).map((item: AdminItem) => ({ ...item, lesson_kind: 'sections' as LessonKind, section_id: item.id })),
+        ...(data.subsections || []).map((item: AdminItem) => ({ ...item, lesson_kind: 'subsections' as LessonKind })),
+        ...(data.topics || []).map((item: AdminItem) => ({ ...item, lesson_kind: 'topics' as LessonKind })),
+      ])
+    } catch {
+      setLessonCatalog([])
+    }
+  }
+
   async function loadItems(tab: ContentTab, offset = 0, append = false) {
     if (tab === 'overview') {
       await loadOverview()
@@ -1579,6 +1656,83 @@ export function AdminPage() {
     await loadItems(activeTab, items.length, true)
   }
 
+  function getNextOrderIndex(tab: ContentTab, kind?: LessonKind, sectionId?: string, subsectionId?: string) {
+    const sourceItems = tab === 'lessons' ? lessonCatalog : items
+    const matchingItems = sourceItems.filter((item) => {
+      if (tab === 'lessons' && kind && item.lesson_kind !== kind) return false
+      if (sectionId && item.section_id !== sectionId && !(kind === 'sections' && item.id === sectionId)) return false
+      if (subsectionId && item.subsection_id !== subsectionId) return false
+      return true
+    })
+    return matchingItems.reduce((maxOrder, item) => Math.max(maxOrder, Number(item.order_index) || 0), -1) + 1
+  }
+
+  function makeAutoId(tab: ContentTab, draft: LessonDraft | TestDraft | TaskDraft | FormulaDraft) {
+    if (tab === 'lessons') {
+      const lesson = draft as LessonDraft
+      const source = translationText(lesson.translations, 'en', lesson.kind === 'topics' ? 'title' : 'name') || lesson.title || lesson.name || lesson.id
+      const slug = slugify(source)
+      if (!slug) return lesson.id
+      if (lesson.kind === 'sections') return slug
+      if (lesson.kind === 'subsections') return slug
+      return slug
+    }
+
+    if (tab === 'formulas') {
+      const formula = draft as FormulaDraft
+      const slug = slugify(translationText(parseJsonObject(formula.translationsText, 'Translations'), 'en', 'name') || formula.name || formula.id)
+      return slug ? `${formula.section_id}-${slug}` : formula.id
+    }
+
+    const practice = draft as TestDraft | TaskDraft
+    const slug = slugify(translationText(practice.translations, 'en', 'title') || practice.title || practice.id)
+    if (!slug) return practice.id
+    return `${practice.section_id}-${practice.subsection_id}-${slug}-${tab === 'tests' ? 'test' : 'task'}`
+  }
+
+  function prepareNewLessonDraft(nextDraft: LessonDraft) {
+    if (selectedId) return nextDraft
+    const autoId = nextDraft.id.trim() ? nextDraft.id : makeAutoId('lessons', nextDraft)
+    return {
+      ...nextDraft,
+      id: autoId,
+      order_index: getNextOrderIndex('lessons', nextDraft.kind, nextDraft.kind === 'sections' ? undefined : nextDraft.section_id, nextDraft.kind === 'topics' ? nextDraft.subsection_id : undefined),
+    }
+  }
+
+  function prepareNewTestDraft(nextDraft: TestDraft) {
+    if (selectedId) return nextDraft
+    return {
+      ...nextDraft,
+      id: nextDraft.id.trim() ? nextDraft.id : makeAutoId('tests', nextDraft),
+      order_index: getNextOrderIndex('tests', undefined, nextDraft.section_id, nextDraft.subsection_id),
+    }
+  }
+
+  function prepareNewTaskDraft(nextDraft: TaskDraft) {
+    if (selectedId) return nextDraft
+    return {
+      ...nextDraft,
+      id: nextDraft.id.trim() ? nextDraft.id : makeAutoId('tasks', nextDraft),
+      order_index: getNextOrderIndex('tasks', undefined, nextDraft.section_id, nextDraft.subsection_id),
+    }
+  }
+
+  function prepareNewFormulaDraft(nextDraft: FormulaDraft) {
+    if (selectedId) return nextDraft
+    let autoId = nextDraft.id
+    try {
+      autoId = nextDraft.id.trim() ? nextDraft.id : makeAutoId('formulas', nextDraft)
+    } catch {
+      autoId = nextDraft.id
+    }
+    return {
+      ...nextDraft,
+      id: autoId,
+      order_index: getNextOrderIndex('formulas', undefined, nextDraft.section_id),
+    }
+  }
+
   function selectItem(item: AdminItem) {
     setSelectedId(item.id || null)
     setEditorValue(JSON.stringify(item, null, 2))
@@ -1592,6 +1746,17 @@ export function AdminPage() {
 
   function createNewItem() {
     const item = activeTab === 'lessons' ? createLessonTemplate(lessonKind) : createTemplate(activeTab)
+    const defaultSectionId = sectionFilter || sectionOptions[0] || String(item.section_id || 'mechanics')
+    const defaultSubsectionId = subsectionFilter || getSubsectionOptions(defaultSectionId)[0] || String(item.subsection_id || '')
+    if (activeTab === 'lessons') {
+      item.section_id = lessonKind === 'sections' ? String(item.id || '') : defaultSectionId
+      item.subsection_id = lessonKind === 'topics' ? defaultSubsectionId : item.subsection_id
+      item.order_index = getNextOrderIndex('lessons', lessonKind, lessonKind === 'sections' ? undefined : defaultSectionId, lessonKind === 'topics' ? defaultSubsectionId : undefined)
+    } else {
+      item.section_id = defaultSectionId
+      if (activeTab === 'tests' || activeTab === 'tasks') item.subsection_id = defaultSubsectionId
+      item.order_index = getNextOrderIndex(activeTab, undefined, defaultSectionId, activeTab === 'tests' || activeTab === 'tasks' ? defaultSubsectionId : undefined)
+    }
     setSelectedId(null)
     setEditorValue(JSON.stringify(item, null, 2))
     setLessonDraft(activeTab === 'lessons' ? toLessonDraft(item) : null)
@@ -1687,6 +1852,11 @@ export function AdminPage() {
     if (!token) return
     void loadItems(activeTab)
   }, [activeTab, token, sectionFilter, subsectionFilter])
+
+  useEffect(() => {
+    if (!token) return
+    void loadLessonCatalog()
+  }, [token])
 
   return (
     <main className="min-h-screen px-6 pb-12 pt-28 lg:px-10">
@@ -1887,12 +2057,15 @@ export function AdminPage() {
                   draft={lessonDraft}
                   saving={saving}
                   selectedItem={selectedItem}
+                  sectionOptions={sectionOptions}
+                  subsectionOptions={getSubsectionOptions(lessonDraft.section_id)}
                   onChange={(nextDraft) => {
-                    setLessonDraft(nextDraft)
+                    const preparedDraft = prepareNewLessonDraft(nextDraft)
+                    setLessonDraft(preparedDraft)
                     try {
-                      setEditorValue(JSON.stringify(lessonDraftToPayload(nextDraft), null, 2))
+                      setEditorValue(JSON.stringify(lessonDraftToPayload(preparedDraft), null, 2))
                     } catch {
-                      setEditorValue(JSON.stringify({ ...nextDraft }, null, 2))
+                      setEditorValue(JSON.stringify({ ...preparedDraft }, null, 2))
                     }
                   }}
                   onSave={() => void saveItem()}
@@ -1903,9 +2076,12 @@ export function AdminPage() {
                   draft={testDraft}
                   saving={saving}
                   selectedItem={selectedItem}
+                  sectionOptions={sectionOptions}
+                  subsectionOptions={getSubsectionOptions(testDraft.section_id)}
                   onChange={(nextDraft) => {
-                    setTestDraft(nextDraft)
-                    setEditorValue(JSON.stringify(testDraftToPayload(nextDraft), null, 2))
+                    const preparedDraft = prepareNewTestDraft(nextDraft)
+                    setTestDraft(preparedDraft)
+                    setEditorValue(JSON.stringify(testDraftToPayload(preparedDraft), null, 2))
                   }}
                   onSave={() => void saveItem()}
                   onDelete={() => void deleteItem()}
@@ -1915,9 +2091,12 @@ export function AdminPage() {
                   draft={taskDraft}
                   saving={saving}
                   selectedItem={selectedItem}
+                  sectionOptions={sectionOptions}
+                  subsectionOptions={getSubsectionOptions(taskDraft.section_id)}
                   onChange={(nextDraft) => {
-                    setTaskDraft(nextDraft)
-                    setEditorValue(JSON.stringify(taskDraftToPayload(nextDraft), null, 2))
+                    const preparedDraft = prepareNewTaskDraft(nextDraft)
+                    setTaskDraft(preparedDraft)
+                    setEditorValue(JSON.stringify(taskDraftToPayload(preparedDraft), null, 2))
                   }}
                   onSave={() => void saveItem()}
                   onDelete={() => void deleteItem()}
@@ -1927,12 +2106,14 @@ export function AdminPage() {
                   draft={formulaDraft}
                   saving={saving}
                   selectedItem={selectedItem}
+                  sectionOptions={sectionOptions}
                   onChange={(nextDraft) => {
-                    setFormulaDraft(nextDraft)
+                    const preparedDraft = prepareNewFormulaDraft(nextDraft)
+                    setFormulaDraft(preparedDraft)
                     try {
-                      setEditorValue(JSON.stringify(formulaDraftToPayload(nextDraft), null, 2))
+                      setEditorValue(JSON.stringify(formulaDraftToPayload(preparedDraft), null, 2))
                     } catch {
-                      setEditorValue(JSON.stringify({ ...nextDraft }, null, 2))
+                      setEditorValue(JSON.stringify({ ...preparedDraft }, null, 2))
                     }
                   }}
                   onSave={() => void saveItem()}
