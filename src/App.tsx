@@ -13,6 +13,7 @@ import { ConnectPage } from '@/pages/ConnectPage'
 import { WorksheetPage } from '@/pages/WorksheetPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { AppShowcasePage } from '@/pages/AppShowcasePage'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -29,7 +30,7 @@ function App() {
   const { theme } = useTheme()
   const { user } = useAuth()
   const location = useLocation()
-  const hideHeader = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/register'
+  const hideHeader = location.pathname === '/' || location.pathname === '/app' || location.pathname === '/login' || location.pathname === '/register'
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -40,6 +41,7 @@ function App() {
       {user && !hideHeader && <Header />}
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/app" element={<AppShowcasePage />} />
         <Route path="/login" element={<AuthLoginPage />} />
         <Route path="/register" element={<AuthRegisterPage />} />
         <Route path="/lesson" element={<RequireAuth><LessonPage /></RequireAuth>} />
