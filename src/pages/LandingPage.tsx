@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom'
+import QRCode from 'qrcode'
+import { GooglePlayIcon } from '@/components/icons/GooglePlayIcon'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +21,7 @@ import {
   Sparkles,
   PlayCircle,
   Smartphone,
+  Bot,
   Mail,
   Phone,
   MessageCircle,
@@ -429,12 +433,18 @@ function FlipCard({
 function GradientBorderPulse({ children, className = '', active = true }: { children: React.ReactNode; className?: string; active?: boolean }) {
   if (!active) return <div className={className}>{children}</div>
   return (
-    <div className={`relative ${className}`}>
-      <motion.div className="absolute -inset-[2px] rounded-3xl z-0"
-        style={{ background: 'linear-gradient(135deg, #6366F1, #EC4899, #8B5CF6, #6366F1)', backgroundSize: '300% 300%' }}
-        animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} />
-      <div className="relative z-10 rounded-3xl">{children}</div>
+    <div className={`relative p-[2px] rounded-3xl overflow-hidden ${className}`}>
+      <motion.div
+        className="absolute -inset-[100%] z-0"
+        style={{
+          background: 'conic-gradient(from 0deg, #06b6d4, #6366f1, #3b82f6, #06b6d4)',
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'linear' }}
+      />
+      <div className="relative z-10 rounded-[22px] bg-slate-900/95 dark:bg-[#0b1328]/95 h-full overflow-hidden">
+        {children}
+      </div>
     </div>
   )
 }
@@ -624,6 +634,17 @@ function FaqItem({ item, theme }: { item: (typeof faqs)[number]; theme: string }
    ═══════════════════════════════════════════════════ */
 export function LandingPage() {
   const { theme } = useTheme()
+  const [appQrUrl, setAppQrUrl] = useState<string>('')
+  useEffect(() => {
+    QRCode.toDataURL('https://play.google.com/store/apps/details?id=com.physicsai.app', {
+      margin: 1,
+      width: 180,
+      color: {
+        dark: '#00f2fe',
+        light: '#070f1e',
+      },
+    }).then(setAppQrUrl).catch(() => {})
+  }, [])
   const { user } = useAuth()
   const prefersReduced = useReducedMotion()
 
@@ -690,17 +711,30 @@ export function LandingPage() {
             {[
               { href: '#features', label: strings.navFeatures },
               { href: '#how', label: strings.navHow },
-              { href: '#app', label: strings.navApp },
+              { href: '/app', label: strings.navApp, isAppRoute: true },
               { href: '#pricing', label: strings.navPricing },
               { href: '#faq', label: strings.navFaq },
               { href: '#contacts', label: strings.navContacts },
             ].map((link) => (
-              <motion.a key={link.href} className={`relative ${textMuted} transition-colors`}
-                href={link.href} whileHover={{ y: -2 }}>
-                {link.label}
-                <motion.span className="absolute -bottom-1 left-0 h-0.5 bg-primary-400 rounded-full"
-                  initial={{ width: 0 }} whileHover={{ width: '100%' }} transition={{ duration: 0.25 }} />
-              </motion.a>
+              link.isAppRoute ? (
+                <Link
+                  key={link.href}
+                  to="/app"
+                  className="relative flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+                >
+                  {link.label}
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-400/15 border border-cyan-400/30 text-cyan-300 font-bold">
+                    App
+                  </span>
+                </Link>
+              ) : (
+                <motion.a key={link.href} className={`relative ${textMuted} transition-colors hover:text-white`}
+                  href={link.href} whileHover={{ y: -2 }}>
+                  {link.label}
+                  <motion.span className="absolute -bottom-1 left-0 h-0.5 bg-primary-400 rounded-full"
+                    initial={{ width: 0 }} whileHover={{ width: '100%' }} transition={{ duration: 0.25 }} />
+                </motion.a>
+              )
             ))}
           </nav>
 
@@ -942,82 +976,155 @@ export function LandingPage() {
           </DirectionalReveal>
         </ParallaxSection>
 
-        {/* ────────────────── APP — fade-in-right, typing indicator (§9) ────────────────── */}
+        {/* ────────────────── APP — Google Play & Mobile Companion ────────────────── */}
         <ParallaxSection speed={0.12} className="mb-24">
           <DirectionalReveal direction="right">
-            <section id="app" className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center">
+            <section id="app" className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
               <div>
                 <motion.div
-                  className={`inline-block text-xs uppercase tracking-[0.3em] ${accent} mb-3 px-3 py-1 rounded-full ${theme === 'dark' ? 'bg-primary-500/10 border border-primary-500/20' : 'bg-primary-50 border border-primary-200'}`}
+                  className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-cyan-300 mb-3 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 font-bold"
                   initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }} transition={{ duration: 0.5 }}
-                >{strings.sectionApp}</motion.div>
+                >
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span>4.9 в Google Play • Мобильный AI-репетитор</span>
+                </motion.div>
 
-                <NeonHeading theme={theme} className={`text-3xl font-bold ${textColor} mb-4`}>
+                <NeonHeading theme={theme} className={`text-3xl sm:text-4xl font-bold ${textColor} mb-4`}>
                   {strings.appTitle}
                 </NeonHeading>
 
-                {/* description with typing indicator for AI mention (§9) */}
-                <motion.p className={`leading-relaxed ${textMuted} mb-6`}
+                <motion.p className={`leading-relaxed ${textMuted} mb-6 text-base sm:text-lg`}
                   initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
                   whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
-                  {strings.appDesc}
+                  Ученики подключаются к интерактивному уроку по QR-коду за 5 секунд, отвечают на тесты со смартфона,
+                  решают задачи и получают пошаговые подсказки от AI-репетитора.
                   <TypingIndicator theme={theme} />
                 </motion.p>
 
-                {/* benefits — hover-grow (§4) + wave icon (§8) */}
-                <motion.ul className="space-y-3" variants={staggerContainer}
+                {/* benefits */}
+                <motion.ul className="space-y-3 mb-8" variants={staggerContainer}
                   initial="hidden" whileInView="visible" viewport={{ once: true }}>
-                  {appBenefits.map((benefit, idx) => (
+                  {appBenefits.map((benefit) => (
                     <motion.li key={benefit} variants={staggerItem}
                       className={`flex items-start gap-3 ${textMuted}`}
-                      whileHover={{ x: 6, scale: 1.02 }} transition={{ duration: 0.2 }}>
-                      <motion.div whileHover={idx === 2 ? waveAnimation : { scale: 1.3, rotate: 20 }}>
-                        <CheckCircle2 className="text-primary-400" size={20} />
-                      </motion.div>
-                      <span>{benefit}</span>
+                      whileHover={{ x: 6, scale: 1.01 }} transition={{ duration: 0.2 }}>
+                      <div className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-cyan-400/15 text-cyan-300 border border-cyan-400/30 mt-0.5">
+                        <CheckCircle2 size={14} />
+                      </div>
+                      <span className="text-sm sm:text-base text-slate-200">{benefit}</span>
                     </motion.li>
                   ))}
                 </motion.ul>
+
+                {/* Buttons & QR code */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.physicsai.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center justify-center gap-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-300 px-6 py-3.5 text-slate-950 shadow-xl shadow-cyan-500/20 font-black transition hover:-translate-y-0.5 hover:shadow-cyan-500/40"
+                  >
+                    <GooglePlayIcon className="w-6 h-6 shrink-0" />
+                    <div className="text-left">
+                      <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-800 leading-none">Доступно в</p>
+                      <p className="text-base font-black leading-tight">Google Play</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 ml-1 transition group-hover:translate-x-1" />
+                  </a>
+
+                  <Link
+                    to="/app"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-5 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:border-cyan-400/40 hover:bg-white/10"
+                  >
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    Подробнее о приложении
+                  </Link>
+                </div>
+
+                {/* Instant scan box */}
+                <div className="mt-6 flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[0.03] p-3 max-w-sm backdrop-blur">
+                  <div className="shrink-0 overflow-hidden rounded-xl border border-cyan-400/30 bg-[#070f1e] p-1 shadow-sm">
+                    {appQrUrl ? (
+                      <img src={appQrUrl} alt="QR Code" className="w-12 h-12 rounded-lg" />
+                    ) : (
+                      <div className="w-12 h-12 grid place-items-center bg-cyan-950 text-cyan-400">
+                        <QrCode size={20} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-bold text-white">Сканируйте с телефона</p>
+                    <p className="text-slate-400 text-[11px] leading-tight mt-0.5">
+                      Мгновенный переход к странице Physics AI в Google Play
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* phone mockup — glassmorphism + floating (§8) */}
+              {/* Phone Mockup with brand logo */}
               <DirectionalReveal direction="right" delay={0.2}>
-                <GlassPanel theme={theme} className="p-6">
-                  <motion.div
-                    className="rounded-3xl bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900 p-6 shadow-2xl shadow-primary-500/10"
-                    animate={prefersReduced ? {} : { y: [0, -8, 0] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
-                    <div className="flex items-center justify-between mb-4">
-                      <motion.div className="text-white font-semibold"
-                        initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }} transition={{ delay: 0.4 }}>
-                        Physics AI
-                      </motion.div>
-                      <motion.div whileHover={shakeAnimation}>
-                        <Smartphone className="text-white/70" size={20} />
-                      </motion.div>
+                <div className="relative mx-auto w-full max-w-[340px]">
+                  <div className="absolute -inset-4 rounded-[44px] bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 blur-2xl -z-10" />
+                  <div className="rounded-[40px] border-[5px] border-slate-700/80 bg-slate-950 p-3 shadow-2xl shadow-cyan-950/80 ring-1 ring-white/15">
+                    {/* Notch */}
+                    <div className="mx-auto mb-2 flex h-4 w-24 items-center justify-between rounded-full bg-black px-2.5">
+                      <div className="h-2 w-2 rounded-full bg-slate-900 border border-slate-800" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     </div>
-                    <motion.div className="rounded-2xl bg-white/10 p-4 mb-4 hover:bg-white/15 transition-colors cursor-default"
-                      whileHover={{ scale: 1.03 }}>
-                      <div className="text-white text-lg font-semibold mb-2">Урок сегодня</div>
-                      <div className="text-white/70 text-sm">Физика — наука о природе</div>
-                    </motion.div>
-                    <motion.div className="rounded-2xl bg-white/10 p-4 hover:bg-white/15 transition-colors cursor-default"
-                      whileHover={{ scale: 1.03 }}>
-                      <div className="text-white/80 text-sm mb-1">Тесты</div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-white font-semibold">Пройдено 7/10</div>
-                        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                          <motion.div className="h-full bg-gradient-to-r from-primary-400 to-accent-400 rounded-full"
-                            initial={{ width: 0 }} whileInView={{ width: '70%' }}
-                            viewport={{ once: true }} transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }} />
+
+                    <div className="rounded-[30px] border border-white/10 bg-gradient-to-b from-slate-900 via-[#0a1224] to-[#060c18] p-4 text-white">
+                      {/* App Bar */}
+                      <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src="/images/icon.png"
+                            alt="Physics AI"
+                            className="w-7 h-7 rounded-lg object-cover ring-1 ring-cyan-400/30"
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
+                          />
+                          <div>
+                            <p className="text-xs font-black">Physics AI</p>
+                            <p className="text-[9px] text-cyan-300">Мобильное приложение</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-300 border border-emerald-400/30 font-bold">
+                          Онлайн
+                        </span>
+                      </div>
+
+                      {/* Lesson topic */}
+                      <div className="rounded-2xl bg-cyan-950/40 border border-cyan-500/20 p-3 mb-3">
+                        <div className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">Урок сегодня</div>
+                        <div className="text-sm font-black text-white mt-0.5">Второй закон Ньютона</div>
+                        <div className="text-[11px] font-mono text-cyan-200 mt-1">F = m · a</div>
+                      </div>
+
+                      {/* AI bubble */}
+                      <div className="rounded-2xl bg-violet-950/40 border border-violet-500/30 p-2.5 mb-3">
+                        <div className="flex items-center gap-1.5 text-violet-300 text-[10px] font-black">
+                          <Bot size={12} />
+                          <span>AI Репетитор:</span>
+                        </div>
+                        <p className="text-[10px] text-slate-200 mt-1 leading-normal">
+                          Ускорение прямо пропорционально равнодействующей силе и обратно пропорционально массе тела.
+                        </p>
+                      </div>
+
+                      {/* Quiz progress */}
+                      <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3">
+                        <div className="flex items-center justify-between text-[11px] font-bold mb-1.5">
+                          <span className="text-slate-300">Тест урока</span>
+                          <span className="text-emerald-400">7/10 решено</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 w-[70%] rounded-full" />
                         </div>
                       </div>
-                    </motion.div>
-                  </motion.div>
-                </GlassPanel>
+                    </div>
+                  </div>
+                </div>
               </DirectionalReveal>
             </section>
           </DirectionalReveal>
