@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { TopicSubsection, LessonTopic } from '@/types'
 import { allTopics as localAllTopics, getAllTopicsForSection as getLocalTopics } from '@/data/allTopics'
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
+import { API_BASE } from '@/lib/api'
 
 export function useTopics() {
   const [sectionsData, setSectionsData] = useState<Record<string, TopicSubsection[]>>({})

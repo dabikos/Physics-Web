@@ -23,7 +23,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const TOKEN_KEY = 'physics_token'
 const USER_KEY = 'physics_user'
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
+import { API_BASE } from '@/lib/api'
+
 const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())
@@ -78,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user)
       return { success: true }
     } catch (error) {
-      return { success: false, error: 'Ошибка сети' }
+      console.error('Login request error:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Ошибка сети при подключении к серверу' }
     }
   }
 
@@ -100,7 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user)
       return { success: true }
     } catch (error) {
-      return { success: false, error: 'Ошибка сети' }
+      console.error('Register request error:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Ошибка сети при подключении к серверу' }
     }
   }
 

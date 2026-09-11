@@ -24,7 +24,7 @@ interface StudentData {
     stage: PlantStage
 }
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
+import { API_BASE } from '@/lib/api'
 
 export function ClassGarden({ isOpen, onClose, onFinish }: ClassGardenProps) {
     const { theme } = useTheme()

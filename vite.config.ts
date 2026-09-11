@@ -22,5 +22,12 @@ export default defineConfig({
       'localhost',
       '127.0.0.1',
     ],
+    proxy: {
+      '/api': {
+        target: 'https://physics-app-production-2585.up.railway.app',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

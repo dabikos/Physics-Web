@@ -123,7 +123,7 @@ export async function getSectionsWithTopics(): Promise<Record<string, TopicSubse
   return result
 }
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
+import { API_BASE } from './api'
 
 // Получить одну тему по ID из базы данных Railway
 export async function getTopicById(topicId: string): Promise<LessonTopic | null> {
