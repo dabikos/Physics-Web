@@ -1,4 +1,3 @@
-// Централизованный базовый URL для запросов к бэкенду.
-// По умолчанию пустая строка '', чтобы все запросы шли относительно текущего домена (/api/...)
-// и безопасно проксировались сервером без CORS-ограничений браузера.
-export const API_BASE = import.meta.env.VITE_BACKEND_URL || ''
+// Всегда используем относительный URL в браузере, чтобы все запросы шли на собственный сервер
+// и проксировались без CORS-ограничений.
+export const API_BASE = typeof window !== 'undefined' ? '' : (import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app')

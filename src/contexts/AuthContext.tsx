@@ -35,6 +35,18 @@ function isAdminUser(user: UserData | null) {
   return user.role === 'admin' || ADMIN_EMAILS.includes(user.email.toLowerCase())
 }
 
+function formatDetailError(detail: any, fallback: string): string {
+  if (!detail) return fallback
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail.map((d: any) => d?.msg || (typeof d === 'string' ? d : JSON.stringify(d))).join(', ')
+  }
+  if (typeof detail === 'object') {
+    return detail.msg || detail.message || JSON.stringify(detail)
+  }
+  return String(detail)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null)
   const [token, setToken] = useState<string | null>(null)
@@ -66,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       const data = await response.json()
       if (!response.ok) {
-        return { success: false, error: data?.detail || 'Ошибка входа' }
+        return { success: false, error: formatDetailError(data?.detail, 'Ошибка входа') }
       }
 
       if (data.user?.role !== 'teacher' && data.user?.role !== 'admin' && !isAdminUser(data.user)) {
@@ -93,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       const data = await response.json()
       if (!response.ok) {
-        return { success: false, error: data?.detail || 'Ошибка регистрации' }
+        return { success: false, error: formatDetailError(data?.detail, 'Ошибка регистрации') }
       }
 
       localStorage.setItem(TOKEN_KEY, data.access_token)
