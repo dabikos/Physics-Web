@@ -182,6 +182,26 @@ export function LessonPage() {
   const [zoomLevel, setZoomLevel] = useState(100) // 50% to 200% (50-200)
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Pen toolbar position & anchor
+  const [penToolbarPosition, setPenToolbarPosition] = useState<'bottom' | 'left'>(() => {
+    try {
+      return (localStorage.getItem('pen_toolbar_position') as 'bottom' | 'left') || 'bottom'
+    } catch {
+      return 'bottom'
+    }
+  })
+  const [whiteboardToolbarAnchor, setWhiteboardToolbarAnchor] = useState<HTMLDivElement | null>(null)
+
+  const handleTogglePenPosition = () => {
+    setPenToolbarPosition((prev) => {
+      const next = prev === 'bottom' ? 'left' : 'bottom'
+      try {
+        localStorage.setItem('pen_toolbar_position', next)
+      } catch {}
+      return next
+    })
+  }
+
   // Formula modal state
   const [selectedFormula, setSelectedFormula] = useState<string | null>(null)
   const [selectedFormulaIndex, setSelectedFormulaIndex] = useState<number>(-1)
@@ -1839,95 +1859,111 @@ export function LessonPage() {
               : 'p-4 lg:p-6 items-start'
           }`}
         >
-          {/* Top Floating Glass Toolbar */}
+          {/* Top Floating Glass Toolbar Container */}
           <div className={`
             ${isFullscreen ? 'fixed top-4 right-6 z-[60]' : 'absolute top-3 right-4 z-30'}
-            flex items-center gap-1.5 p-1.5 rounded-2xl
-            ${theme === 'dark'
-              ? 'bg-slate-900/90 border border-white/10 backdrop-blur-md text-slate-200'
-              : 'bg-white/95 border border-slate-200 backdrop-blur-md text-slate-700'
-            }
-            shadow-xl shadow-black/30
+            ${penToolbarPosition === 'left' ? 'flex items-center gap-2' : 'flex flex-col items-end gap-2'}
+            pointer-events-none
           `}>
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1">
+            {/* Whiteboard Pen Settings Toolbar (when positioned on the left) */}
+            {penToolbarPosition === 'left' && (
+              <div ref={setWhiteboardToolbarAnchor} className="pointer-events-auto" />
+            )}
+
+            {/* Main Floating Glass Toolbar */}
+            <div className={`
+              pointer-events-auto flex items-center gap-1.5 p-1.5 rounded-2xl
+              ${theme === 'dark'
+                ? 'bg-slate-900/90 border border-white/10 backdrop-blur-md text-slate-200'
+                : 'bg-white/95 border border-slate-200 backdrop-blur-md text-slate-700'
+              }
+              shadow-xl shadow-black/30
+            `}>
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleZoomOut}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                    theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                  title="Уменьшить масштаб"
+                >
+                  <ZoomOut size={15} />
+                </button>
+                <button
+                  onClick={handleZoomReset}
+                  className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
+                    theme === 'dark' ? 'hover:bg-white/10 text-slate-200 bg-white/5' : 'hover:bg-slate-200 text-slate-700 bg-slate-100'
+                  }`}
+                  title="Сбросить на 100%"
+                >
+                  {zoomLevel}%
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                    theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                  title="Увеличить масштаб"
+                >
+                  <ZoomIn size={15} />
+                </button>
+              </div>
+
+              <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
+
+              {/* Class Panel Button */}
               <button
-                onClick={handleZoomOut}
+                onClick={() => setIsClassPanelOpen(prev => !prev)}
+                className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
+                  isClassPanelOpen
+                    ? 'bg-primary-500 text-white shadow-sm'
+                    : theme === 'dark'
+                      ? 'hover:bg-white/10 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
+                }`}
+                title={isClassPanelOpen ? 'Закрыть панель класса' : 'Открыть панель класса'}
+              >
+                <Users size={14} />
+                <span>Класс</span>
+              </button>
+
+              <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
+
+              {/* Whiteboard Pen Button */}
+              <button
+                onClick={() => setIsDrawingActive(prev => !prev)}
+                className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
+                  isDrawingActive
+                    ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400'
+                    : theme === 'dark'
+                      ? 'hover:bg-white/10 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
+                }`}
+                title={isDrawingActive ? 'Выключить перо (P)' : 'Перо для заметок (P)'}
+              >
+                <PenTool size={14} />
+                <span>Перо</span>
+              </button>
+
+              <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
+
+              {/* Fullscreen Button */}
+              <button
+                onClick={toggleFullscreen}
                 className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
                   theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
                 }`}
-                title="Уменьшить масштаб"
+                title={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
               >
-                <ZoomOut size={15} />
-              </button>
-              <button
-                onClick={handleZoomReset}
-                className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
-                  theme === 'dark' ? 'hover:bg-white/10 text-slate-200 bg-white/5' : 'hover:bg-slate-200 text-slate-700 bg-slate-100'
-                }`}
-                title="Сбросить на 100%"
-              >
-                {zoomLevel}%
-              </button>
-              <button
-                onClick={handleZoomIn}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                  theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-                }`}
-                title="Увеличить масштаб"
-              >
-                <ZoomIn size={15} />
+                {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
               </button>
             </div>
 
-            <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
-
-            {/* Class Panel Button */}
-            <button
-              onClick={() => setIsClassPanelOpen(prev => !prev)}
-              className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
-                isClassPanelOpen
-                  ? 'bg-primary-500 text-white shadow-sm'
-                  : theme === 'dark'
-                    ? 'hover:bg-white/10 text-slate-300'
-                    : 'hover:bg-slate-100 text-slate-700'
-              }`}
-              title={isClassPanelOpen ? 'Закрыть панель класса' : 'Открыть панель класса'}
-            >
-              <Users size={14} />
-              <span>Класс</span>
-            </button>
-
-            <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
-
-            {/* Whiteboard Pen Button */}
-            <button
-              onClick={() => setIsDrawingActive(prev => !prev)}
-              className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
-                isDrawingActive
-                  ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400'
-                  : theme === 'dark'
-                    ? 'hover:bg-white/10 text-slate-300'
-                    : 'hover:bg-slate-100 text-slate-700'
-              }`}
-              title={isDrawingActive ? 'Выключить перо (P)' : 'Перо для заметок (P)'}
-            >
-              <PenTool size={14} />
-              <span>Перо</span>
-            </button>
-
-            <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
-
-            {/* Fullscreen Button */}
-            <button
-              onClick={toggleFullscreen}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
-              }`}
-              title={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
-            >
-              {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-            </button>
+            {/* Whiteboard Pen Settings Toolbar (when positioned under/bottom) */}
+            {penToolbarPosition === 'bottom' && (
+              <div ref={setWhiteboardToolbarAnchor} className="pointer-events-auto flex justify-end" />
+            )}
           </div>
 
           <div
@@ -1949,6 +1985,9 @@ export function LessonPage() {
               <DrawingCanvas
                 isActive={isDrawingActive}
                 onClose={() => setIsDrawingActive(false)}
+                toolbarAnchor={whiteboardToolbarAnchor}
+                position={penToolbarPosition}
+                onTogglePosition={handleTogglePenPosition}
               />
 
               {/* Background decoration */}
