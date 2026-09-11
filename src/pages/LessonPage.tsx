@@ -453,6 +453,7 @@ export function LessonPage() {
     }
   }, [activeState, testQuestions.length, activeSessionId, token])
 
+
   useEffect(() => {
     const computeVariants = async () => {
       if (!activeSessionId || connectedStudents.length === 0) {
@@ -1834,19 +1835,19 @@ export function LessonPage() {
           ref={demoScreenRef}
           className={`flex-1 flex justify-center relative overflow-y-auto transition-all ${
             isFullscreen
-              ? 'fixed inset-0 z-50 w-screen h-screen p-3 sm:p-5 lg:p-6 items-center bg-slate-950'
+              ? 'fixed inset-0 z-50 w-screen h-screen p-3 sm:p-5 lg:p-6 items-start overflow-y-auto bg-slate-950 scroll-smooth'
               : 'p-4 lg:p-6 items-start'
           }`}
         >
           {/* Top Floating Glass Toolbar */}
           <div className={`
-            absolute top-3 right-4 z-30
+            ${isFullscreen ? 'fixed top-4 right-6 z-[60]' : 'absolute top-3 right-4 z-30'}
             flex items-center gap-1.5 p-1.5 rounded-2xl
             ${theme === 'dark'
-              ? 'bg-slate-900/80 border border-white/10 backdrop-blur-md text-slate-200'
-              : 'bg-white/90 border border-slate-200 backdrop-blur-md text-slate-700'
+              ? 'bg-slate-900/90 border border-white/10 backdrop-blur-md text-slate-200'
+              : 'bg-white/95 border border-slate-200 backdrop-blur-md text-slate-700'
             }
-            shadow-xl shadow-black/20
+            shadow-xl shadow-black/30
           `}>
             {/* Zoom Controls */}
             <div className="flex items-center gap-1">
@@ -1932,14 +1933,14 @@ export function LessonPage() {
           <div
             ref={contentRef}
             className={`w-full flex justify-center transition-transform duration-300 origin-top ${
-              isFullscreen ? 'h-full items-center' : ''
+              isFullscreen ? 'min-h-full items-start' : ''
             }`}
             style={{ transform: `scale(${zoomLevel / 100})` }}
           >
             <Card className={`
-              w-full flex flex-col items-center border backdrop-blur-md shadow-2xl relative overflow-hidden transition-all duration-300
+              w-full flex flex-col items-center border backdrop-blur-md shadow-2xl relative transition-all duration-300
               ${isFullscreen
-                ? 'max-w-none h-[calc(100vh-2.5rem)] rounded-2xl p-6 lg:p-10 justify-between'
+                ? 'max-w-none min-h-[calc(100vh-2.5rem)] rounded-2xl p-6 lg:p-10 justify-start'
                 : 'max-w-5xl min-h-[560px] rounded-3xl p-6 lg:p-8 justify-start'
               }
               ${theme === 'dark' ? 'border-white/10 bg-slate-900/60' : 'border-slate-200 bg-white/95'}
@@ -1959,7 +1960,7 @@ export function LessonPage() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeState + selectedTopicId}
-                  className={`relative z-10 w-full ${isFullscreen ? 'h-full flex flex-col justify-center' : ''}`}
+                  className={`relative z-10 w-full ${isFullscreen && activeState === 'idle' ? 'min-h-[calc(100vh-8rem)] flex flex-col justify-center' : ''}`}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
