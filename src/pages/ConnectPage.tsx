@@ -179,21 +179,29 @@ export function ConnectPage() {
       <div className="max-w-6xl mx-auto space-y-5">
         
         {/* Top bar with breadcrumb & actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl quantum-card border border-white/[0.08]">
+        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border transition-all ${
+          isDark
+            ? 'quantum-card border-white/[0.08]'
+            : 'bg-white border-slate-200/80 shadow-xl shadow-slate-200/50'
+        }`}>
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-primary-600 via-indigo-500 to-neon-cyan flex items-center justify-center text-white shadow-md shadow-primary-600/30">
               <QrCode size={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+                <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Подключение к классу
                 </h1>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/30 uppercase tracking-wide">
+                <span className={`hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                  isDark
+                    ? 'bg-neon-cyan/15 text-neon-cyan border-neon-cyan/30'
+                    : 'bg-primary-50 text-primary-700 border-primary-200'
+                }`}>
                   Режим доски
                 </span>
               </div>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Выведите этот экран на проектор или смарт-доску для моментального подключения учеников
               </p>
             </div>
@@ -207,7 +215,7 @@ export function ConnectPage() {
                 className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
                   isDark 
                     ? 'bg-cosmic-800/90 border-white/10 text-white focus:border-primary-400' 
-                    : 'bg-white border-slate-300 text-slate-800 focus:border-primary-500'
+                    : 'bg-white border-slate-300 text-slate-800 focus:border-primary-500 shadow-sm'
                 } focus:outline-none focus:ring-2 focus:ring-primary-500/20`}
               >
                 <option value="">Все классы</option>
@@ -229,7 +237,7 @@ export function ConnectPage() {
         </div>
 
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-sm font-medium">
+          <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-sm font-medium">
             {error}
           </div>
         )}
@@ -239,15 +247,19 @@ export function ConnectPage() {
           
           {/* Left: Projector QR & Big Code Panel (7 cols) */}
           <div className="lg:col-span-7 space-y-5">
-            <div className="p-6 sm:p-7 rounded-2xl quantum-card border border-white/[0.1] relative overflow-hidden text-center">
+            <div className={`p-6 sm:p-7 rounded-2xl border relative overflow-hidden text-center transition-all ${
+              isDark
+                ? 'quantum-card border-white/[0.1]'
+                : 'bg-white border-slate-200/80 shadow-xl shadow-slate-200/50'
+            }`}>
               {/* Subtle background glow */}
-              <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary-600/20 blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-neon-cyan/15 blur-3xl pointer-events-none" />
+              <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary-600/10 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-neon-cyan/10 blur-3xl pointer-events-none" />
 
               {session ? (
                 <div className="space-y-6 relative z-10">
                   <div className="space-y-1.5">
-                    <span className="text-[11px] uppercase tracking-widest font-extrabold text-primary-400">
+                    <span className="text-[11px] uppercase tracking-widest font-extrabold text-primary-500">
                       Код доступа для учеников
                     </span>
                     
@@ -256,7 +268,7 @@ export function ConnectPage() {
                       <div className={`text-4xl sm:text-5xl font-black font-mono tracking-[0.2em] pl-3 py-2 px-5 rounded-xl border ${
                         isDark 
                           ? 'bg-cosmic-950/80 border-primary-500/40 text-transparent bg-clip-text bg-gradient-to-r from-white via-primary-100 to-neon-cyan shadow-inner' 
-                          : 'bg-slate-100 border-primary-300 text-primary-950'
+                          : 'bg-slate-50 border-primary-300 text-primary-700 shadow-inner'
                       }`}>
                         {session.code}
                       </div>
@@ -265,10 +277,10 @@ export function ConnectPage() {
                         onClick={handleCopy}
                         className={`p-3 rounded-xl border transition-all ${
                           copied
-                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-500'
                             : isDark
                               ? 'bg-white/[0.05] border-white/10 hover:border-white/20 text-white'
-                              : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                              : 'bg-slate-100 border-slate-200 hover:bg-slate-200/70 text-slate-700'
                         }`}
                         title="Скопировать код"
                       >
@@ -279,7 +291,7 @@ export function ConnectPage() {
 
                   {/* QR Code Presentation Box */}
                   <div className="flex flex-col items-center justify-center">
-                    <div className="relative p-3 rounded-2xl bg-white shadow-xl shadow-primary-950/40 border-2 border-primary-500/30">
+                    <div className="relative p-3 rounded-2xl bg-white shadow-xl shadow-slate-400/20 border-2 border-primary-500/30">
                       {qrUrl ? (
                         <img 
                           src={qrUrl} 
@@ -292,8 +304,12 @@ export function ConnectPage() {
                         </div>
                       )}
                       
-                      <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-cosmic-900 border border-white/20 text-white text-[10px] font-bold shadow-md flex items-center gap-1.5 whitespace-nowrap">
-                        <Smartphone size={12} className="text-neon-cyan" />
+                      <div className={`absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full border text-[10px] font-bold shadow-md flex items-center gap-1.5 whitespace-nowrap ${
+                        isDark
+                          ? 'bg-slate-900 border-white/20 text-white'
+                          : 'bg-white border-slate-300 text-slate-700 shadow-sm'
+                      }`}>
+                        <Smartphone size={12} className="text-primary-500" />
                         <span>Наведите камеру в приложении</span>
                       </div>
                     </div>
@@ -304,21 +320,21 @@ export function ConnectPage() {
                     <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border ${
                       isDark ? 'bg-white/[0.04] border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                     }`}>
-                      <Clock size={16} className="text-amber-400" />
-                      <span>Истекает через: <strong className="font-mono text-white">{timeLeft}</strong></span>
+                      <Clock size={16} className="text-amber-500" />
+                      <span>Истекает через: <strong className={`font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{timeLeft}</strong></span>
                     </div>
 
                     {session.class_id && (
                       <div className={`px-3.5 py-1.5 rounded-full border ${
                         isDark ? 'bg-white/[0.04] border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                       }`}>
-                        Класс: <strong className="text-white">{session.class_id}</strong>
+                        Класс: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{session.class_id}</strong>
                       </div>
                     )}
 
                     <button
                       onClick={handleClose}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold transition"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-semibold transition"
                     >
                       <XCircle size={15} />
                       <span>Завершить сессию</span>
@@ -327,19 +343,25 @@ export function ConnectPage() {
                 </div>
               ) : (
                 <div className="py-16 space-y-6">
-                  <div className="w-20 h-20 rounded-3xl bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-slate-400">
+                  <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto border transition-colors ${
+                    isDark
+                      ? 'bg-white/[0.04] border-white/10 text-slate-400'
+                      : 'bg-primary-50 border-primary-100 text-primary-600 shadow-inner'
+                  }`}>
                     <QrCode size={40} />
                   </div>
                   <div className="space-y-2 max-w-md mx-auto">
-                    <h3 className="text-xl font-bold">Код подключения не создан</h3>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Код подключения не создан
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       Нажмите кнопку ниже, чтобы сгенерировать уникальный PIN и QR-код для вашего урока.
                     </p>
                   </div>
                   <button
                     onClick={handleCreate}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-primary-600 to-neon-violet text-white font-bold shadow-xl shadow-primary-600/30 hover:scale-105 transition-all"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-primary-600 to-indigo-600 text-white font-bold shadow-xl shadow-primary-600/30 hover:scale-105 active:scale-95 transition-all"
                   >
                     <Sparkles size={18} />
                     <span>Сгенерировать код для класса</span>
@@ -350,19 +372,25 @@ export function ConnectPage() {
 
             {/* Test summary card if test is completed */}
             {summary && (
-              <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-500/15 via-emerald-600/10 to-teal-500/15 border border-emerald-500/30 flex items-center justify-between">
+              <div className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${
+                isDark
+                  ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-600/10 to-teal-500/15 border-emerald-500/30'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-950 shadow-md shadow-emerald-500/5'
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500 text-white'
+                  }`}>
                     <UserCheck size={22} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-emerald-300">Сводка успеваемости теста</h4>
-                    <p className="text-xs text-emerald-400/80">Результаты в реальном времени</p>
+                    <h4 className={`font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-900'}`}>Сводка успеваемости теста</h4>
+                    <p className={`text-xs ${isDark ? 'text-emerald-400/80' : 'text-emerald-700'}`}>Результаты в реальном времени</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-black font-mono text-white">{summary.average}%</span>
-                  <div className="text-xs text-emerald-400">Сдали: {summary.count} чел.</div>
+                  <span className={`text-2xl font-black font-mono ${isDark ? 'text-white' : 'text-emerald-950'}`}>{summary.average}%</span>
+                  <div className={`text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-700 font-medium'}`}>Сдали: {summary.count} чел.</div>
                 </div>
               </div>
             )}
@@ -372,30 +400,46 @@ export function ConnectPage() {
           <div className="lg:col-span-5 space-y-5">
             
             {/* Connected Students Box */}
-            <div className="p-5 sm:p-6 rounded-2xl quantum-card border border-white/[0.1] space-y-4">
+            <div className={`p-5 sm:p-6 rounded-2xl border space-y-4 transition-all ${
+              isDark
+                ? 'quantum-card border-white/[0.1]'
+                : 'bg-white border-slate-200/80 shadow-xl shadow-slate-200/50'
+            }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    isDark ? 'bg-primary-500/15 text-primary-400' : 'bg-primary-50 text-primary-600'
+                  }`}>
                     <Users size={16} />
                   </div>
-                  <h3 className="text-base font-bold">Подключённые ученики</h3>
+                  <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Подключённые ученики
+                  </h3>
                 </div>
                 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                  isDark
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-600'} animate-pulse`} />
                   <span>{students.length} в классе</span>
                 </span>
               </div>
 
               {students.length === 0 ? (
-                <div className="py-10 px-4 rounded-xl bg-white/[0.02] border border-dashed border-white/10 text-center space-y-1.5">
-                  <div className="w-9 h-9 rounded-full bg-white/[0.04] text-slate-400 flex items-center justify-center mx-auto">
+                <div className={`py-10 px-4 rounded-xl border border-dashed text-center space-y-1.5 ${
+                  isDark ? 'bg-white/[0.02] border-white/10' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center mx-auto ${
+                    isDark ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-200/70 text-slate-500'
+                  }`}>
                     <Users size={18} />
                   </div>
-                  <p className="text-xs font-medium text-slate-400">
+                  <p className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     Ожидание подключения...
                   </p>
-                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                  <p className={`text-[11px] max-w-xs mx-auto ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                     Когда ученики отсканируют код со своих смартфонов, они сразу появятся в этом списке.
                   </p>
                 </div>
@@ -410,7 +454,9 @@ export function ConnectPage() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                          isDark ? 'bg-cosmic-900/90 border-white/[0.07] hover:border-white/15' : 'bg-white border-slate-200'
+                          isDark
+                            ? 'bg-cosmic-900/90 border-white/[0.07] hover:border-white/15'
+                            : 'bg-slate-50/80 border-slate-200/80 hover:bg-slate-100/80'
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
@@ -418,18 +464,18 @@ export function ConnectPage() {
                             {student.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-xs leading-tight">{student.name}</div>
-                            <div className="text-[10px] text-slate-400">{student.email}</div>
+                            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{student.name}</div>
+                            <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{student.email}</div>
                           </div>
                         </div>
 
                         <div className="text-right">
                           {resultsMap[student.id] ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 font-mono text-xs font-bold">
                               {resultsMap[student.id].score}%
                             </span>
                           ) : (
-                            <span className="text-[11px] text-slate-500 font-medium">
+                            <span className={`text-[11px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                               {student.class_id || 'Подключён'}
                             </span>
                           )}
@@ -442,15 +488,23 @@ export function ConnectPage() {
             </div>
 
             {/* Student Instructions Visual Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-900/40 via-primary-900/30 to-cosmic-900 border border-primary-500/20 shadow-lg space-y-3">
-              <div className="flex items-center gap-2 text-neon-cyan text-xs font-extrabold uppercase tracking-wider">
-                <ShieldCheck size={15} />
+            <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition-all ${
+              isDark
+                ? 'bg-gradient-to-br from-indigo-950/60 via-slate-900 to-indigo-950/40 border-primary-500/20 shadow-black/40'
+                : 'bg-gradient-to-br from-indigo-50/90 via-white to-primary-50/70 border-indigo-100 shadow-indigo-100/40'
+            }`}>
+              <div className={`flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider ${
+                isDark ? 'text-neon-cyan' : 'text-primary-600'
+              }`}>
+                <ShieldCheck size={16} />
                 <span>Как подключиться ученику</span>
               </div>
 
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-md bg-white/10 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className={`w-5 h-5 rounded-md font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 ${
+                    isDark ? 'bg-white/10 text-white' : 'bg-primary-600 text-white shadow-sm'
+                  }`}>
                     1
                   </div>
                   <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>
@@ -459,7 +513,9 @@ export function ConnectPage() {
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-md bg-white/10 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className={`w-5 h-5 rounded-md font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 ${
+                    isDark ? 'bg-white/10 text-white' : 'bg-primary-600 text-white shadow-sm'
+                  }`}>
                     2
                   </div>
                   <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>
@@ -468,7 +524,9 @@ export function ConnectPage() {
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-md bg-white/10 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className={`w-5 h-5 rounded-md font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 ${
+                    isDark ? 'bg-white/10 text-white' : 'bg-primary-600 text-white shadow-sm'
+                  }`}>
                     3
                   </div>
                   <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>
