@@ -281,21 +281,21 @@ export function DrawingCanvas({ isActive, onClose }: DrawingCanvasProps) {
         style={{ touchAction: 'none' }}
       />
 
-      {/* Floating Toolbar (only when active) */}
+      {/* Floating Toolbar (Bottom Dock, avoids any collision with top bars) */}
       <AnimatePresence>
         {isActive && (
           <motion.div
-            initial={{ opacity: 0, y: -15, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.18 }}
             className={`
-              absolute top-3 left-1/2 -translate-x-1/2 z-40
-              flex items-center gap-2 px-3 py-1.5 rounded-2xl shadow-2xl backdrop-blur-xl border
+              fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+              flex items-center gap-2.5 px-3.5 py-2 rounded-2xl shadow-2xl backdrop-blur-2xl border
               ${
                 theme === 'dark'
-                  ? 'bg-slate-900/90 border-white/15 text-slate-100 shadow-black/60'
-                  : 'bg-white/95 border-slate-300 text-slate-800 shadow-slate-400/40'
+                  ? 'bg-slate-900/95 border-white/20 text-slate-100 shadow-black/80 ring-1 ring-white/10'
+                  : 'bg-white/95 border-slate-300 text-slate-800 shadow-slate-500/30 ring-1 ring-black/5'
               }
             `}
           >
