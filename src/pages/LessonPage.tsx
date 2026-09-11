@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, PanelLeftClose, PanelLeftOpen, PenTool } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLesson } from '@/contexts/LessonContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TheorySlides } from '@/components/theory/TheorySlides'
+import { DrawingCanvas } from '@/components/whiteboard/DrawingCanvas'
 import { generateProblems, generateTest, generateInteractiveTasks, generateAiExplainQuestions, AiExplainQA } from '@/lib/githubAI'
 import { FormulaDisplay } from '@/components/markdown/FormulaDisplay'
 import { ProblemRenderer } from '@/components/markdown/ProblemRenderer'
@@ -114,8 +115,26 @@ export function LessonPage() {
       return next
     })
   }
-const [selectedSimulationId, setSelectedSimulationId] = useState<SimulationId | null>(null)
-const [simulationParams, setSimulationParams] = useState({
+
+  const [isDrawingActive, setIsDrawingActive] = useState<boolean>(false)
+
+  // Hotkey 'P' / 'З' to toggle pen mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return
+      }
+      if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
+        setIsDrawingActive(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  const [selectedSimulationId, setSelectedSimulationId] = useState<SimulationId | null>(null)
+  const [simulationParams, setSimulationParams] = useState({
   'uniform-acceleration': { v0: 2, accel: 1, timeScale: 1 },
   'ohms-law': { voltage: 12, resistance: 6 },
   'energy-incline': { mass: 2, height: 2, angle: 30, mu: 0.1, timeScale: 1 },
@@ -1859,6 +1878,24 @@ const [simulationParams, setSimulationParams] = useState({
 
             <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
 
+            {/* Whiteboard Pen Button */}
+            <button
+              onClick={() => setIsDrawingActive(prev => !prev)}
+              className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
+                isDrawingActive
+                  ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400'
+                  : theme === 'dark'
+                    ? 'hover:bg-white/10 text-slate-300'
+                    : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              title={isDrawingActive ? 'Выключить перо (P)' : 'Перо для заметок (P)'}
+            >
+              <PenTool size={14} />
+              <span>Перо</span>
+            </button>
+
+            <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
+
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
@@ -1877,6 +1914,12 @@ const [simulationParams, setSimulationParams] = useState({
             style={{ transform: `scale(${zoomLevel / 100})` }}
           >
             <Card className={`w-full max-w-5xl flex flex-col items-center justify-start p-6 lg:p-8 rounded-3xl border ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-white/90'} backdrop-blur-md shadow-2xl relative overflow-hidden min-h-[560px]`}>
+              {/* Whiteboard Drawing Layer */}
+              <DrawingCanvas
+                isActive={isDrawingActive}
+                onClose={() => setIsDrawingActive(false)}
+              />
+
               {/* Background decoration */}
               <div className="absolute inset-0 opacity-30 pointer-events-none">
                 <div className="absolute top-0 left-0 w-96 h-96 bg-primary-500/15 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
