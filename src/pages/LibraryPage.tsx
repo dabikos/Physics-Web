@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -21,7 +21,8 @@ import {
   BookOpen,
   ChevronRight,
   ChevronDown,
-  Search
+  Search,
+  Sparkles
 } from 'lucide-react'
 
 const physicsSections = [
@@ -29,7 +30,7 @@ const physicsSections = [
     id: 'mechanics',
     title: 'Механика',
     description: 'Движение, силы, энергия, импульс, колебания',
-    icon: <Gauge size={48} />,
+    icon: <Gauge size={22} />,
     color: 'from-blue-500 to-cyan-500',
     totalTopics: 22,
   },
@@ -37,7 +38,7 @@ const physicsSections = [
     id: 'thermodynamics',
     title: 'Термодинамика',
     description: 'Теплота, температура, молекулярная физика, газы',
-    icon: <Thermometer size={48} />,
+    icon: <Thermometer size={22} />,
     color: 'from-orange-500 to-red-500',
     totalTopics: 18,
   },
@@ -45,7 +46,7 @@ const physicsSections = [
     id: 'electromagnetism',
     title: 'Электродинамика',
     description: 'Заряды, электрические поля, постоянный ток, магнетизм',
-    icon: <Zap size={48} />,
+    icon: <Zap size={22} />,
     color: 'from-yellow-500 to-amber-500',
     totalTopics: 20,
   },
@@ -53,7 +54,7 @@ const physicsSections = [
     id: 'optics',
     title: 'Оптика',
     description: 'Геометрическая и волновая оптика, интерференция',
-    icon: <Eye size={48} />,
+    icon: <Eye size={22} />,
     color: 'from-purple-500 to-pink-500',
     totalTopics: 12,
   },
@@ -61,7 +62,7 @@ const physicsSections = [
     id: 'atomic',
     title: 'Атомная и ядерная физика',
     description: 'Строение атома, фотоэффект, радиоактивность',
-    icon: <Atom size={48} />,
+    icon: <Atom size={22} />,
     color: 'from-emerald-500 to-teal-500',
     totalTopics: 14,
   },
@@ -69,7 +70,7 @@ const physicsSections = [
     id: 'relativity',
     title: 'Теория относительности',
     description: 'СТО, релятивистская динамика, пространство и время',
-    icon: <Compass size={48} />,
+    icon: <Compass size={22} />,
     color: 'from-amber-500 to-orange-600',
     totalTopics: 10,
   },
@@ -77,7 +78,7 @@ const physicsSections = [
     id: 'astronomy',
     title: 'Астрономия и астрофизика',
     description: 'Солнечная система, законы Кеплера, звёзды и Вселенная',
-    icon: <Telescope size={48} />,
+    icon: <Telescope size={22} />,
     color: 'from-indigo-500 to-violet-600',
     totalTopics: 12,
   },
@@ -87,10 +88,9 @@ export function LibraryPage() {
   const { theme } = useTheme()
   const { addTopic, removeTopic, isTopicSelected, selectedTopics } = useLesson()
   const { user } = useAuth()
-  const { sectionsData, loading, error, getAllTopics } = useTopics()
+  const { sectionsData, loading, error } = useTopics()
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
   const [expandedSubsections, setExpandedSubsections] = useState<Set<string>>(new Set())
-  const [selectedCounts, setSelectedCounts] = useState<Record<string, number>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateLessonOpen, setIsCreateLessonOpen] = useState(false)
   const [lessonTitle, setLessonTitle] = useState('')
@@ -108,26 +108,30 @@ export function LibraryPage() {
   const modalBackdrop = theme === 'dark' ? 'bg-cosmic-950/80 backdrop-blur-md' : 'bg-slate-900/50 backdrop-blur-sm'
   const inputBg = theme === 'dark' ? 'bg-cosmic-900/90 border-white/10 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'
 
-  // Обновление счетчиков выбранных тем
-  useEffect(() => {
-    async function updateCounts() {
-      const counts: Record<string, number> = {}
-      for (const sectionId of Object.keys(sectionsData)) {
-        const topics = await getAllTopics(sectionId)
-        counts[sectionId] = topics.filter(t => isTopicSelected(t.id)).length
+  // Синхронный мгновенный подсчёт выбранных тем без сетевых задержек и повторных рендеров
+  const selectedCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    if (!sectionsData || selectedTopics.length === 0) return counts
+    const selectedSet = new Set(selectedTopics.map(t => t.id))
+    for (const [secId, subs] of Object.entries(sectionsData)) {
+      let count = 0
+      for (const sub of subs) {
+        for (const t of sub.topics) {
+          if (selectedSet.has(t.id)) count++
+        }
       }
-      setSelectedCounts(counts)
+      counts[secId] = count
     }
-    if (Object.keys(sectionsData).length > 0) {
-      updateCounts()
-    }
-  }, [sectionsData, isTopicSelected, getAllTopics])
+    return counts
+  }, [sectionsData, selectedTopics])
+
+  const getSelectedCount = (sectionId: string) => {
+    return selectedCounts[sectionId] || 0
+  }
 
   const handleToggleSection = (sectionId: string) => {
-    setExpandedSection(expandedSection === sectionId ? null : sectionId)
-    if (expandedSection !== sectionId) {
-      setExpandedSubsections(new Set())
-    }
+    setExpandedSection(prev => (prev === sectionId ? null : sectionId))
+    setExpandedSubsections(new Set())
   }
 
   const handleToggleSubsection = (subsectionId: string) => {
@@ -142,21 +146,16 @@ export function LibraryPage() {
     })
   }
 
-  const handleToggleTopic = async (topicId: string, sectionId: string) => {
-    const allSectionTopics = await getAllTopics(sectionId)
-    const topic = allSectionTopics.find(t => t.id === topicId)
-    if (!topic) return
-
-    if (isTopicSelected(topicId)) {
-      removeTopic(topicId)
+  // Мгновенное локальное переключение темы без асинхронных задержек и подвисаний
+  const handleToggleTopic = (topic: any) => {
+    if (!topic || !topic.id) return
+    if (isTopicSelected(topic.id)) {
+      removeTopic(topic.id)
     } else {
       addTopic(topic)
     }
   }
 
-  const getSelectedCount = (sectionId: string) => {
-    return selectedCounts[sectionId] || 0
-  }
 
   // Фильтрация тем по поисковому запросу
   const filterTopics = (topics: any[], query: string) => {
@@ -229,50 +228,42 @@ export function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen px-6 pb-6 pt-20 lg:px-8 lg:pb-8 lg:pt-24">
-      <div className="max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="mb-10">
-          <h1 className={`text-4xl lg:text-5xl font-bold ${textColor} mb-3`}>
-            Библиотека
-          </h1>
-          <p className={`${textMuted} text-xl mb-6`}>
-            Выберите раздел физики и темы для добавления в урок
-          </p>
-
-          {/* Create Lesson Button */}
-          <div className="flex items-center gap-3 mb-6">
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setIsCreateLessonOpen(true)}
-              className="gap-2"
-            >
-              Создать урок
-            </Button>
-            <span className={`${textMuted} text-sm`}>
-              Выбрано тем: {selectedTopics.length}
-            </span>
+    <div className="min-h-screen px-4 sm:px-6 pb-8 pt-16 lg:px-8">
+      <div className="max-w-[1500px] mx-auto">
+        {/* Header Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className={`text-2xl lg:text-3xl font-extrabold ${textColor} tracking-tight`}>
+                Библиотека разделов
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-500/15 text-primary-300 border border-primary-500/30">
+                86 тем
+              </span>
+            </div>
+            <p className={`${textMuted} text-xs lg:text-sm mt-1`}>
+              Выберите темы для проведения урока или создайте персональный шаблон
+            </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative max-w-2xl">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Search Bar */}
             <div className={`
-              flex items-center gap-3 px-4 py-3 rounded-xl border-2
+              flex items-center gap-2.5 px-3 py-1.5 rounded-xl border
               ${theme === 'dark' 
-                ? 'bg-white/5 border-white/10 focus-within:border-primary-500/50' 
+                ? 'bg-slate-900/60 border-white/10 focus-within:border-primary-500/60' 
                 : 'bg-white border-slate-300 focus-within:border-primary-500'
               }
-              transition-colors
+              transition-colors w-full sm:w-64
             `}>
-              <Search size={20} className={textMuted} />
+              <Search size={16} className={textMuted} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск тем по названию или описанию..."
+                placeholder="Поиск тем..."
                 className={`
-                  flex-1 bg-transparent outline-none
+                  flex-1 bg-transparent outline-none text-xs
                   ${textColor} placeholder:${textMuted}
                 `}
               />
@@ -280,108 +271,137 @@ export function LibraryPage() {
                 <button
                   onClick={() => setSearchQuery('')}
                   className={`
-                    p-1 rounded-lg transition-colors
+                    p-0.5 rounded transition-colors
                     ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}
                   `}
                 >
-                  <X size={18} className={textMuted} />
+                  <X size={14} className={textMuted} />
                 </button>
               )}
             </div>
+
+            {/* Create Lesson Button */}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsCreateLessonOpen(true)}
+              className="h-9 px-3.5 text-xs font-semibold rounded-xl gap-1.5 shadow-md shadow-primary-500/20"
+            >
+              <Plus size={15} />
+              <span>Создать урок</span>
+              {selectedTopics.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-white/20 text-[10px]">
+                  {selectedTopics.length}
+                </span>
+              )}
+            </Button>
           </div>
         </div>
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <p className={textMuted}>Загрузка данных...</p>
+          <div className="text-center py-8">
+            <p className={`${textMuted} text-xs`}>Загрузка данных...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="text-center py-12">
-            <p className="text-red-400">{error}</p>
+          <div className="text-center py-8">
+            <p className="text-rose-400 text-xs">{error}</p>
           </div>
         )}
 
         {/* No Results Message */}
         {!loading && !error && searchQuery.trim() && 
          physicsSections.every(section => !hasMatchesInSection(section.id, searchQuery)) && (
-          <Card className={`${bgCard} ${borderColor} p-8 text-center`}>
-            <Search size={48} className={`${textMuted} mx-auto mb-4`} />
-            <h3 className={`${textColor} text-xl font-semibold mb-2`}>
+          <Card className={`${bgCard} ${borderColor} p-6 text-center rounded-2xl mb-6`}>
+            <Search size={32} className={`${textMuted} mx-auto mb-2`} />
+            <h3 className={`${textColor} text-base font-semibold mb-1`}>
               Ничего не найдено
             </h3>
-            <p className={textMuted}>
+            <p className={`${textMuted} text-xs`}>
               Попробуйте изменить поисковый запрос
             </p>
           </Card>
         )}
 
-        {/* Sections Grid */}
+        {/* Sections Grid - 4 columns on large screens for comfortable 100% scale */}
         {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 mb-6">
             {physicsSections
               .filter(section => !searchQuery.trim() || hasMatchesInSection(section.id, searchQuery))
               .map((section) => {
               const isExpanded = expandedSection === section.id
               const selectedCount = getSelectedCount(section.id)
-              const subsections = sectionsData[section.id] || []
             
             return (
               <motion.div
                 key={section.id}
-                whileHover={{ y: -4 }}
-                transition={{ duration: 0.2 }}
+                whileHover={{ y: -2 }}
+                transition={{ duration: 0.15 }}
               >
-                <Card hover className={`overflow-hidden group ${bgCard} ${borderColor} ${isExpanded ? 'ring-2 ring-primary-500' : ''}`}>
-                  <CardHeader className="pb-4">
-                    <div className={`
-                      w-20 h-20 rounded-2xl bg-gradient-to-br ${section.color} 
-                      flex items-center justify-center text-white mb-4
-                      group-hover:scale-110 transition-transform duration-300
-                    `}>
-                      {section.icon}
+                <div className={`
+                  p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between h-full
+                  ${isExpanded 
+                    ? 'ring-2 ring-primary-500/80 bg-primary-500/10 border-primary-500/50 shadow-lg shadow-primary-500/10' 
+                    : theme === 'dark'
+                      ? 'bg-slate-900/40 border-white/10 hover:border-white/20 hover:bg-slate-900/60'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
+                  }
+                `}>
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className={`
+                        w-10 h-10 rounded-xl bg-gradient-to-br ${section.color} 
+                        flex items-center justify-center text-white shrink-0 shadow-md shadow-black/20
+                      `}>
+                        {section.icon}
+                      </div>
+                      {selectedCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30">
+                          {selectedCount} в уроке
+                        </span>
+                      )}
                     </div>
-                    <h3 className={`text-2xl font-bold ${textColor} mb-2`}>
+                    <h3 className={`text-sm lg:text-base font-bold ${textColor} leading-tight mb-1.5`}>
                       {section.title}
                     </h3>
-                    <p className={textMuted}>
+                    <p className={`${textMuted} text-xs line-clamp-2 leading-relaxed mb-4 min-h-[2rem]`}>
                       {section.description}
                     </p>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`${textMuted40} text-sm`}>
-                        {section.totalTopics} тем
-                        {selectedCount > 0 && (
-                          <span className="text-primary-400 ml-2">
-                            ({selectedCount} выбрано)
-                          </span>
-                        )}
-                      </span>
-                      <Button 
-                        variant={isExpanded ? 'primary' : 'secondary'}
-                        size="sm"
-                        onClick={() => handleToggleSection(section.id)}
-                        className="gap-2"
-                      >
-                        {isExpanded ? (
-                          <>
-                            <X size={18} />
-                            Закрыть
-                          </>
-                        ) : (
-                          <>
-                            <ChevronRight size={18} />
-                            Открыть
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-auto">
+                    <span className={`${textMuted40} text-xs font-medium`}>
+                      {section.totalTopics} тем
+                    </span>
+                    <button 
+                      onClick={() => handleToggleSection(section.id)}
+                      className={`
+                        h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all
+                        ${isExpanded 
+                          ? 'bg-primary-500 text-white shadow-sm' 
+                          : theme === 'dark'
+                            ? 'bg-white/5 hover:bg-white/10 text-slate-300'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }
+                      `}
+                    >
+                      {isExpanded ? (
+                        <>
+                          <X size={14} />
+                          <span>Закрыть</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronRight size={14} />
+                          <span>Открыть</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             )
           })}
@@ -392,146 +412,139 @@ export function LibraryPage() {
         <AnimatePresence>
           {expandedSection && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-8"
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+              className="mb-6"
             >
-              <Card className={`${bgCard} ${borderColor}`}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+              <div className={`p-5 rounded-3xl border ${borderColor} ${bgCard} shadow-2xl relative overflow-hidden`}>
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary-500/20 text-primary-400 flex items-center justify-center">
+                      <BookOpen size={16} />
+                    </div>
                     <div>
-                      <h2 className={`text-3xl font-bold ${textColor} mb-2`}>
+                      <h2 className={`text-lg font-bold ${textColor} leading-tight`}>
                         {physicsSections.find(s => s.id === expandedSection)?.title}
                       </h2>
-                      <p className={textMuted}>
-                        Выберите темы для добавления в урок
+                      <p className={`${textMuted} text-xs`}>
+                        Нажмите на тему, чтобы добавить её в активный урок
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExpandedSection(null)}
-                    >
-                      <X size={20} />
-                    </Button>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {(sectionsData[expandedSection] || [])
-                      .filter(subsection => hasMatchesInSubsection(subsection, searchQuery))
-                      .map((subsection) => {
-                      const isSubsectionExpanded = expandedSubsections.has(subsection.id)
-                      const selectedInSubsection = subsection.topics.filter(t => isTopicSelected(t.id)).length
-                      const filteredTopics = filterTopics(subsection.topics, searchQuery)
-                      
-                      return (
-                        <div key={subsection.id} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'} rounded-xl p-4`}>
-                          <button
-                            onClick={() => handleToggleSubsection(subsection.id)}
-                            className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
-                          >
-                            <div className="flex items-center gap-3">
-                              {isSubsectionExpanded ? (
-                                <ChevronDown size={20} className={textMuted} />
-                              ) : (
-                                <ChevronRight size={20} className={textMuted} />
-                              )}
-                              <h3 className={`text-xl font-semibold ${textColor}`}>
-                                {subsection.title}
-                              </h3>
-                              <span className={`${textMuted40} text-sm`}>
-                                ({filteredTopics.length} {searchQuery ? 'найдено' : 'тем'})
-                              </span>
-                              {selectedInSubsection > 0 && (
-                                <span className="text-primary-400 text-sm font-medium">
-                                  {selectedInSubsection} выбрано
-                                </span>
-                              )}
-                            </div>
-                          </button>
+                  <button
+                    onClick={() => setExpandedSection(null)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                      theme === 'dark' ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                    title="Свернуть раздел"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
 
-                          <AnimatePresence>
-                            {isSubsectionExpanded && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3"
-                              >
-                                {filteredTopics.map((topic) => {
-                                  const isSelected = isTopicSelected(topic.id)
-                                  return (
-                                    <motion.div
-                                      key={topic.id}
-                                      whileHover={{ scale: 1.02 }}
-                                      whileTap={{ scale: 0.98 }}
-                                    >
-                                      <Card
-                                        hover
-                                        className={`cursor-pointer transition-all ${
-                                          isSelected 
-                                            ? 'ring-2 ring-primary-500 bg-primary-500/10' 
-                                            : ''
-                                        } ${bgCard} ${borderColor}`}
-                                        onClick={() => handleToggleTopic(topic.id, expandedSection)}
-                                      >
-                                        <CardContent className="p-4">
-                                          <div className="flex items-start justify-between gap-3">
-                                            <div className="flex-1">
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <BookOpen size={16} className="text-primary-400" />
-                                                <h4 className={`text-base font-semibold ${textColor}`}>
-                                                  {topic.title}
-                                                </h4>
-                                              </div>
-                                              <p className={`${textMuted} text-sm`}>
-                                                {topic.description}
-                                              </p>
-                                            </div>
-                                            <div className={`flex-shrink-0 ${isSelected ? 'text-primary-500' : textMuted40}`}>
-                                              {isSelected ? (
-                                                <Check size={20} className="text-primary-500" />
-                                              ) : (
-                                                <Plus size={20} />
-                                              )}
-                                            </div>
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </motion.div>
-                                  )
-                                })}
-                              </motion.div>
+                <div className="space-y-3">
+                  {(sectionsData[expandedSection] || [])
+                    .filter(subsection => hasMatchesInSubsection(subsection, searchQuery))
+                    .map((subsection) => {
+                    const isSubsectionExpanded = expandedSubsections.has(subsection.id)
+                    const selectedInSubsection = subsection.topics.filter(t => isTopicSelected(t.id)).length
+                    const filteredTopics = filterTopics(subsection.topics, searchQuery)
+                    
+                    return (
+                      <div key={subsection.id} className={`${theme === 'dark' ? 'bg-white/[0.03] border border-white/5' : 'bg-slate-50 border border-slate-200'} rounded-2xl p-3.5 transition-all`}>
+                        <button
+                          onClick={() => handleToggleSubsection(subsection.id)}
+                          className="w-full flex items-center justify-between hover:opacity-90 transition-opacity"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {isSubsectionExpanded ? (
+                              <ChevronDown size={16} className="text-primary-400" />
+                            ) : (
+                              <ChevronRight size={16} className={textMuted} />
                             )}
-                          </AnimatePresence>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+                            <h3 className={`text-sm font-semibold ${textColor}`}>
+                              {subsection.title}
+                            </h3>
+                            <span className={`${textMuted40} text-xs`}>
+                              ({filteredTopics.length} тем)
+                            </span>
+                          </div>
+                          {selectedInSubsection > 0 && (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary-500/20 text-primary-300">
+                              {selectedInSubsection} в уроке
+                            </span>
+                          )}
+                        </button>
+
+                        <AnimatePresence>
+                          {isSubsectionExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-3 pt-2 border-t border-white/5"
+                            >
+                              {filteredTopics.map((topic) => {
+                                const isSelected = isTopicSelected(topic.id)
+                                return (
+                                  <div
+                                    key={topic.id}
+                                    onClick={() => handleToggleTopic(topic)}
+                                    className={`
+                                      p-3 rounded-xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-2.5
+                                      ${isSelected 
+                                        ? 'ring-2 ring-primary-500/70 bg-primary-500/15 border-primary-500/50' 
+                                        : theme === 'dark'
+                                          ? 'bg-slate-900/40 border-white/10 hover:border-white/20 hover:bg-slate-900/60'
+                                          : 'bg-white border-slate-200 hover:border-slate-300'
+                                      }
+                                    `}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <h4 className={`text-xs font-semibold ${textColor} truncate`}>
+                                          {topic.title}
+                                        </h4>
+                                      </div>
+                                      {topic.description && (
+                                        <p className={`${textMuted} text-[11px] truncate mt-0.5`}>
+                                          {topic.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                                      isSelected 
+                                        ? 'bg-primary-500 text-white shadow-sm' 
+                                        : 'bg-white/10 text-slate-400'
+                                    }`}>
+                                      {isSelected ? <Check size={13} /> : <Plus size={13} />}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Info Card */}
-        <Card className={`mt-10 p-8 bg-gradient-to-r from-primary-500/10 to-accent-500/10 border-primary-500/20 ${bgCard} ${borderColor}`}>
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 rounded-full bg-primary-500/20 flex items-center justify-center">
-              <Plus size={32} className="text-primary-400" />
-            </div>
-            <div>
-              <h3 className={`text-xl font-semibold ${textColor} mb-1`}>
-                Создайте свой урок
-              </h3>
-              <p className={textMuted}>
-                Выберите раздел, откройте подразделы и добавьте нужные темы в урок. Всего доступно 86 тем по физике.
-              </p>
-            </div>
+        {/* Info Tip Bar */}
+        <div className={`p-4 rounded-2xl border ${borderColor} ${theme === 'dark' ? 'bg-primary-500/5' : 'bg-primary-50'} flex items-center gap-3`}>
+          <div className="w-8 h-8 rounded-lg bg-primary-500/20 text-primary-400 flex items-center justify-center shrink-0">
+            <Sparkles size={16} />
           </div>
-        </Card>
+          <p className={`${textMuted} text-xs leading-relaxed`}>
+            Выбранные темы автоматически попадают в меню «Мой урок» для запуска теории, формул, интерактивных симуляций и генерации тестов.
+          </p>
+        </div>
       </div>
 
       {/* Create Lesson Modal */}

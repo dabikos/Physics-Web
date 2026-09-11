@@ -1,20 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Получаем переменные окружения
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || ''
-const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+// Supabase больше не используется — вся база данных перенесена на Railway
+export const isSupabaseConfigured = false
 
-export const isSupabaseConfigured = Boolean(rawUrl && rawKey && rawUrl.startsWith('http'))
+const supabaseUrl = 'https://placeholder.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder'
 
-if (!isSupabaseConfigured) {
-  console.warn('Supabase URL или Anon Key не настроены. Используются встроенные учебные материалы и локальное хранилище.')
-}
-
-// Fallback на валидный URL-заглушку, чтобы createClient не падал с фатальной ошибкой при импорте бандла
-const supabaseUrl = isSupabaseConfigured ? rawUrl : 'https://placeholder.supabase.co'
-const supabaseAnonKey = isSupabaseConfigured ? rawKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder'
-
-// Создаем клиент Supabase
+// Создаем заглушку-клиент Supabase, чтобы код с fallback не падал
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Типы для таблиц базы данных

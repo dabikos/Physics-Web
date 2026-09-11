@@ -168,183 +168,184 @@ export function AIPage() {
   }
 
   return (
-    <div className="min-h-screen px-6 pb-6 pt-20 lg:px-8 lg:pb-8 lg:pt-24">
-      <div className="max-w-[1600px] mx-auto h-[calc(100vh-8rem)]">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-              <Sparkles size={28} className="text-white" />
+    <div className="min-h-screen px-4 sm:px-6 pb-4 pt-16 lg:px-8">
+      <div className="max-w-[1500px] mx-auto h-[calc(100vh-5rem)] flex flex-col">
+        {/* Compact Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-3 border-b border-white/5 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-md shadow-primary-500/20 shrink-0">
+              <Sparkles size={18} />
             </div>
             <div>
-              <h1 className={`text-4xl lg:text-5xl font-bold ${textColor}`}>
-                AI Ассистент
+              <h1 className={`text-xl lg:text-2xl font-bold ${textColor} leading-tight`}>
+                ИИ-Тьютор учителя
               </h1>
+              <p className={`${textMuted} text-xs`}>
+                Генерация объяснений, примеров и контрольных вопросов
+              </p>
             </div>
           </div>
-          <p className={`${textMuted} text-lg ml-[72px]`}>
-            Интеллектуальная помощь для проведения урока
-          </p>
-        </div>
 
-        {/* Topic Selector */}
-        <div className="mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className={`${textMuted} text-sm`}>Контекст:</label>
+          {/* Context selector inline */}
+          <div className="flex items-center gap-2">
+            <span className={`${textMuted} text-xs font-medium`}>Контекст:</span>
             <select
               value={topicMode}
               onChange={(event) => setTopicMode(event.target.value as 'lesson' | 'custom' | 'none')}
-              className={`px-3 py-2 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 text-white border-white/10' : 'bg-white text-slate-900 border-slate-200'} dark:[color-scheme:dark]`}
+              className={`h-8 px-2.5 rounded-lg text-xs font-medium border ${
+                theme === 'dark' ? 'bg-slate-900 text-white border-white/10' : 'bg-white text-slate-900 border-slate-200'
+              } dark:[color-scheme:dark]`}
             >
-              <option value="lesson" className={theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>Тема урока</option>
-              <option value="custom" className={theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>Своя тема</option>
-              <option value="none" className={theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>Без темы</option>
+              <option value="lesson">Тема урока</option>
+              <option value="custom">Своя тема</option>
+              <option value="none">Без темы</option>
             </select>
             {topicMode === 'custom' && (
               <input
                 value={customTopic}
                 onChange={(event) => setCustomTopic(event.target.value)}
                 placeholder="Введите тему..."
-                className={`min-w-[240px] px-3 py-2 rounded-xl border ${theme === 'dark' ? 'bg-white/10 text-white border-white/10' : 'bg-white text-slate-900 border-slate-200'}`}
+                className={`h-8 min-w-[180px] px-2.5 text-xs rounded-lg border ${
+                  theme === 'dark' ? 'bg-white/5 text-white border-white/10' : 'bg-white text-slate-900 border-slate-200'
+                }`}
               />
             )}
             {topicMode === 'lesson' && selectedTopics.length > 0 && (
-              <div className={`${textMuted} text-sm`}>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary-500/15 text-primary-300 border border-primary-500/30 truncate max-w-[200px]">
                 {selectedTopics.map(t => t.title).join(', ')}
-              </div>
+              </span>
             )}
           </div>
         </div>
 
         {/* Main Content: Split Layout */}
-        <div className="flex gap-6 h-[calc(100%-8rem)]">
+        <div className="flex gap-4 flex-1 min-h-0">
           {/* Left Panel - Shortcuts */}
-          <aside className="w-80 lg:w-96 flex-shrink-0">
-            <Card className={`h-full ${bgCard} ${borderColor} flex flex-col`}>
-              <div className="p-6 border-b border-white/10">
-                <h2 className={`text-xl font-bold ${textColor} mb-2`}>
-                  Быстрые действия
+          <aside className="w-72 lg:w-80 flex-shrink-0 flex flex-col">
+            <Card className={`h-full ${bgCard} ${borderColor} flex flex-col overflow-hidden`}>
+              <div className="p-3.5 border-b border-white/10 shrink-0">
+                <h2 className={`text-xs font-bold uppercase tracking-wider ${textColor}`}>
+                  Быстрые сценарии
                 </h2>
-                <p className={textMuted + ' text-sm'}>
-                  Нажмите кнопку или напишите вопрос вручную
+                <p className={`${textMuted} text-[11px] mt-0.5`}>
+                  Нажмите на карточку для мгновенного запроса
                 </p>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-3">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {aiActions.map((action) => (
-                  <motion.div
+                  <div
                     key={action.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleShortcutClick(action.prompt)}
+                    className={`
+                      p-3 rounded-xl border cursor-pointer transition-all duration-200 flex items-start gap-2.5
+                      ${theme === 'dark'
+                        ? 'bg-white/[0.03] border-white/10 hover:border-primary-500/40 hover:bg-white/[0.07]'
+                        : 'bg-white border-slate-200 hover:border-primary-400 hover:shadow-sm'
+                      }
+                    `}
                   >
-                    <Card
-                      hover
-                      className={`p-4 cursor-pointer ${bgCard} ${borderColor}`}
-                      onClick={() => handleShortcutClick(action.prompt)}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`
-                          w-12 h-12 rounded-xl bg-gradient-to-br ${action.color}
-                          flex items-center justify-center text-white shrink-0
-                        `}>
-                          {action.icon}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className={`text-base font-semibold ${textColor} mb-1`}>
-                            {action.title}
-                          </h3>
-                          <p className={`${textMuted} text-sm`}>
-                            {action.description}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
+                    <div className={`
+                      w-8 h-8 rounded-lg bg-gradient-to-br ${action.color}
+                      flex items-center justify-center text-white shrink-0 shadow-sm
+                    `}>
+                      {action.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-xs font-semibold ${textColor} leading-tight mb-0.5`}>
+                        {action.title}
+                      </h3>
+                      <p className={`${textMuted} text-[11px] line-clamp-2 leading-relaxed`}>
+                        {action.description}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </Card>
           </aside>
 
           {/* Right Panel - Chat */}
-          <main className="flex-1 flex flex-col">
+          <main className="flex-1 flex flex-col min-w-0">
             <Card className={`flex-1 flex flex-col ${bgCard} ${borderColor} overflow-hidden`}>
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.map((message) => (
-                  <motion.div
+                  <div
                     key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
                     className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`flex items-start gap-3 max-w-[80%] ${message.isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`flex items-start gap-2.5 max-w-[85%] ${message.isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className={`
-                        w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                        w-7 h-7 rounded-lg flex items-center justify-center shrink-0
                         ${message.isUser 
                           ? 'bg-gradient-to-br from-primary-500 to-accent-500' 
-                          : 'bg-gradient-to-br from-slate-600 to-slate-700'
+                          : 'bg-slate-700'
                         }
                       `}>
                         {message.isUser ? (
-                          <span className="text-white text-sm font-semibold">У</span>
+                          <span className="text-white text-xs font-bold">У</span>
                         ) : (
-                          <Bot size={16} className="text-white" />
+                          <Bot size={14} className="text-white" />
                         )}
                       </div>
                       <div className={`
-                        rounded-2xl px-4 py-3
+                        rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed
                         ${message.isUser 
-                          ? `bg-gradient-to-br from-primary-500 to-accent-500 text-white` 
-                          : `${theme === 'dark' ? 'bg-white/10' : 'bg-slate-100'} ${textColor}`
+                          ? `bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-md shadow-primary-500/15` 
+                          : `${theme === 'dark' ? 'bg-white/10 text-slate-100' : 'bg-slate-100 text-slate-800'}`
                         }
                       `}>
-                        <MarkdownRenderer content={message.text} className="text-sm leading-relaxed" />
-                        <span className={`text-xs mt-1 block ${message.isUser ? 'text-white/70' : textMuted}`}>
+                        <MarkdownRenderer content={message.text} className="text-xs leading-relaxed" />
+                        <span className={`text-[10px] mt-1 block ${message.isUser ? 'text-white/70' : textMuted}`}>
                           {message.timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-100'} ${textColor}`}>
-                      Печатает...
+                    <div className={`rounded-2xl px-3.5 py-2 text-xs flex items-center gap-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-100'} ${textColor}`}>
+                      <Sparkles size={13} className="animate-spin text-primary-400" />
+                      <span>ИИ готовит ответ...</span>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Chat Input */}
-              <div className={`p-6 border-t ${borderColor}`}>
+              <div className={`p-3 border-t ${borderColor} shrink-0 bg-black/10`}>
                 {error && (
-                  <div className="mb-3 text-sm text-red-400">{error}</div>
+                  <div className="mb-2 text-xs text-rose-400">{error}</div>
                 )}
-                <div className="flex items-end gap-3">
-                  <textarea
+                <div className="flex items-center gap-2">
+                  <input
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Напишите вопрос..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage()
+                      }
+                    }}
+                    placeholder="Задайте любой вопрос или выберите сценарий слева..."
                     className={`
-                      flex-1 min-h-[60px] max-h-[120px] px-4 py-3 rounded-xl
-                      ${theme === 'dark' ? 'bg-white/10 text-white placeholder-white/40' : 'bg-white text-slate-900 placeholder-slate-400 border border-slate-200'}
-                      focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none
+                      flex-1 h-10 px-3.5 rounded-xl text-xs
+                      ${theme === 'dark' ? 'bg-white/5 text-white placeholder-white/40 border border-white/10' : 'bg-white text-slate-900 placeholder-slate-400 border border-slate-300'}
+                      focus:outline-none focus:ring-2 focus:ring-primary-500
                     `}
-                    rows={2}
                   />
                   <Button
                     variant="primary"
-                    size="lg"
+                    size="sm"
                     onClick={handleSendMessage}
                     disabled={!inputValue.trim() || isLoading}
-                    className="shrink-0"
+                    className="h-10 px-3.5 rounded-xl shrink-0 gap-1.5 shadow-md shadow-primary-500/20"
                   >
-                    <Send size={20} />
+                    <Send size={14} />
+                    <span className="hidden sm:inline text-xs">Отправить</span>
                   </Button>
                 </div>
-                <p className={`${textMuted} text-xs mt-2`}>
-                  Стиль: спокойный, деловой. Ответы короткие, структурированные.
-                </p>
               </div>
             </Card>
           </main>

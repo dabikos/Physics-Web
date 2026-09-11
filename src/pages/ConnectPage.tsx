@@ -173,27 +173,27 @@ export function ConnectPage() {
   }, [session?.code])
 
   return (
-    <div className={`min-h-screen pt-20 pb-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300 ${
+    <div className={`min-h-screen pt-16 pb-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300 ${
       isDark ? 'text-white' : 'text-slate-900'
     }`}>
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-5">
         
         {/* Top bar with breadcrumb & actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl quantum-card border border-white/[0.08]">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary-600 via-indigo-500 to-neon-cyan flex items-center justify-center text-white shadow-lg shadow-primary-600/30">
-              <QrCode size={28} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl quantum-card border border-white/[0.08]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-primary-600 via-indigo-500 to-neon-cyan flex items-center justify-center text-white shadow-md shadow-primary-600/30">
+              <QrCode size={22} />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                   Подключение к классу
                 </h1>
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/30 uppercase tracking-wide">
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/30 uppercase tracking-wide">
                   Режим доски
                 </span>
               </div>
-              <p className={`text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                 Выведите этот экран на проектор или смарт-доску для моментального подключения учеников
               </p>
             </div>
@@ -235,25 +235,25 @@ export function ConnectPage() {
         )}
 
         {/* Main interactive grid */}
-        <div className="grid lg:grid-cols-12 gap-8 items-start">
+        <div className="grid lg:grid-cols-12 gap-5 items-start">
           
           {/* Left: Projector QR & Big Code Panel (7 cols) */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="p-8 sm:p-10 rounded-3xl quantum-card border border-white/[0.1] relative overflow-hidden text-center">
+          <div className="lg:col-span-7 space-y-5">
+            <div className="p-6 sm:p-7 rounded-2xl quantum-card border border-white/[0.1] relative overflow-hidden text-center">
               {/* Subtle background glow */}
               <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary-600/20 blur-3xl pointer-events-none" />
               <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-neon-cyan/15 blur-3xl pointer-events-none" />
 
               {session ? (
-                <div className="space-y-8 relative z-10">
-                  <div className="space-y-2">
-                    <span className="text-xs uppercase tracking-widest font-extrabold text-primary-400">
+                <div className="space-y-6 relative z-10">
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] uppercase tracking-widest font-extrabold text-primary-400">
                       Код доступа для учеников
                     </span>
                     
                     {/* Big PIN Box */}
-                    <div className="flex items-center justify-center gap-4">
-                      <div className={`text-5xl sm:text-7xl font-black font-mono tracking-[0.25em] pl-4 py-3 px-6 rounded-2xl border ${
+                    <div className="flex items-center justify-center gap-3">
+                      <div className={`text-4xl sm:text-5xl font-black font-mono tracking-[0.2em] pl-3 py-2 px-5 rounded-xl border ${
                         isDark 
                           ? 'bg-cosmic-950/80 border-primary-500/40 text-transparent bg-clip-text bg-gradient-to-r from-white via-primary-100 to-neon-cyan shadow-inner' 
                           : 'bg-slate-100 border-primary-300 text-primary-950'
@@ -263,7 +263,7 @@ export function ConnectPage() {
                       
                       <button
                         onClick={handleCopy}
-                        className={`p-4 rounded-2xl border transition-all ${
+                        className={`p-3 rounded-xl border transition-all ${
                           copied
                             ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
                             : isDark
@@ -272,28 +272,28 @@ export function ConnectPage() {
                         }`}
                         title="Скопировать код"
                       >
-                        {copied ? <Check size={24} /> : <Copy size={24} />}
+                        {copied ? <Check size={20} /> : <Copy size={20} />}
                       </button>
                     </div>
                   </div>
 
                   {/* QR Code Presentation Box */}
                   <div className="flex flex-col items-center justify-center">
-                    <div className="relative p-4 rounded-3xl bg-white shadow-2xl shadow-primary-950/40 border-4 border-primary-500/30">
+                    <div className="relative p-3 rounded-2xl bg-white shadow-xl shadow-primary-950/40 border-2 border-primary-500/30">
                       {qrUrl ? (
                         <img 
                           src={qrUrl} 
                           alt="QR для подключения" 
-                          className="w-64 h-64 sm:w-72 sm:h-72 object-contain rounded-xl"
+                          className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-lg"
                         />
                       ) : (
-                        <div className="w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center text-slate-400">
-                          <RefreshCw size={36} className="animate-spin text-primary-500" />
+                        <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center text-slate-400">
+                          <RefreshCw size={28} className="animate-spin text-primary-500" />
                         </div>
                       )}
                       
-                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-cosmic-900 border border-white/20 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5 whitespace-nowrap">
-                        <Smartphone size={13} className="text-neon-cyan" />
+                      <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-cosmic-900 border border-white/20 text-white text-[10px] font-bold shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                        <Smartphone size={12} className="text-neon-cyan" />
                         <span>Наведите камеру в приложении</span>
                       </div>
                     </div>
@@ -369,67 +369,67 @@ export function ConnectPage() {
           </div>
 
           {/* Right: Live Students Joined List & Instruction (5 cols) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-5">
             
             {/* Connected Students Box */}
-            <div className="p-6 sm:p-7 rounded-3xl quantum-card border border-white/[0.1] space-y-5">
+            <div className="p-5 sm:p-6 rounded-2xl quantum-card border border-white/[0.1] space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center">
-                    <Users size={18} />
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-primary-500/15 text-primary-400 flex items-center justify-center">
+                    <Users size={16} />
                   </div>
-                  <h3 className="text-lg font-bold">Подключённые ученики</h3>
+                  <h3 className="text-base font-bold">Подключённые ученики</h3>
                 </div>
                 
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>{students.length} в классе</span>
                 </span>
               </div>
 
               {students.length === 0 ? (
-                <div className="py-12 px-4 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-white/[0.04] text-slate-400 flex items-center justify-center mx-auto">
-                    <Users size={20} />
+                <div className="py-10 px-4 rounded-xl bg-white/[0.02] border border-dashed border-white/10 text-center space-y-1.5">
+                  <div className="w-9 h-9 rounded-full bg-white/[0.04] text-slate-400 flex items-center justify-center mx-auto">
+                    <Users size={18} />
                   </div>
-                  <p className="text-sm font-medium text-slate-400">
+                  <p className="text-xs font-medium text-slate-400">
                     Ожидание подключения...
                   </p>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
                     Когда ученики отсканируют код со своих смартфонов, они сразу появятся в этом списке.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
                   <AnimatePresence>
-                    {students.map((student, idx) => (
+                    {students.map((student) => (
                       <motion.div
                         key={student.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                           isDark ? 'bg-cosmic-900/90 border-white/[0.07] hover:border-white/15' : 'bg-white border-slate-200'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-500 to-neon-cyan flex items-center justify-center text-white text-xs font-bold shadow-md shadow-primary-500/20">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary-500 to-neon-cyan flex items-center justify-center text-white text-xs font-bold shadow-sm">
                             {student.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-sm leading-tight">{student.name}</div>
-                            <div className="text-[11px] text-slate-400">{student.email}</div>
+                            <div className="font-semibold text-xs leading-tight">{student.name}</div>
+                            <div className="text-[10px] text-slate-400">{student.email}</div>
                           </div>
                         </div>
 
                         <div className="text-right">
                           {resultsMap[student.id] ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold">
                               {resultsMap[student.id].score}%
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-500 font-medium">
+                            <span className="text-[11px] text-slate-500 font-medium">
                               {student.class_id || 'Подключён'}
                             </span>
                           )}
@@ -442,15 +442,15 @@ export function ConnectPage() {
             </div>
 
             {/* Student Instructions Visual Card */}
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900/40 via-primary-900/30 to-cosmic-900 border border-primary-500/20 shadow-xl space-y-4">
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-900/40 via-primary-900/30 to-cosmic-900 border border-primary-500/20 shadow-lg space-y-3">
               <div className="flex items-center gap-2 text-neon-cyan text-xs font-extrabold uppercase tracking-wider">
-                <ShieldCheck size={16} />
+                <ShieldCheck size={15} />
                 <span>Как подключиться ученику</span>
               </div>
 
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-white/10 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-white/10 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
                     1
                   </div>
                   <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>
@@ -458,8 +458,8 @@ export function ConnectPage() {
                   </p>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-white/10 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-white/10 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
                     2
                   </div>
                   <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>
@@ -467,8 +467,8 @@ export function ConnectPage() {
                   </p>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-white/10 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-md bg-white/10 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
                     3
                   </div>
                   <p className={isDark ? 'text-slate-300' : 'text-slate-700'}>
