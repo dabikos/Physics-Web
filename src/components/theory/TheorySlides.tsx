@@ -360,11 +360,11 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <div className={`rounded-2xl border ${borderColor} ${bgCard} p-5 sm:p-6 shadow-md flex flex-col min-h-[260px] max-h-[50vh]`}>
+            <div className={`rounded-2xl border ${borderColor} ${bgCard} p-5 sm:p-7 shadow-md flex flex-col min-h-[280px] max-h-[62vh]`}>
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 <MarkdownRenderer 
                   content={slides[currentSlide].content}
-                  className="text-xs sm:text-sm md:text-base leading-relaxed"
+                  className="text-sm sm:text-base md:text-lg leading-relaxed"
                 />
               </div>
 

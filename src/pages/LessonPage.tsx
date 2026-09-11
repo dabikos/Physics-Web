@@ -241,34 +241,44 @@ export function LessonPage() {
         document.fullscreenElement ||
         (document as any).webkitFullscreenElement ||
         (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
+        (document as any).msFullscreenElement ||
+        isFullscreen
       )
 
       if (!isCurrentlyFullscreen) {
-        // Вход в полноэкранный режим
-        if (demoScreenRef.current.requestFullscreen) {
-          await demoScreenRef.current.requestFullscreen()
-        } else if ((demoScreenRef.current as any).webkitRequestFullscreen) {
-          await (demoScreenRef.current as any).webkitRequestFullscreen()
-        } else if ((demoScreenRef.current as any).mozRequestFullScreen) {
-          await (demoScreenRef.current as any).mozRequestFullScreen()
-        } else if ((demoScreenRef.current as any).msRequestFullscreen) {
-          await (demoScreenRef.current as any).msRequestFullscreen()
+        setIsFullscreen(true)
+        try {
+          if (demoScreenRef.current.requestFullscreen) {
+            await demoScreenRef.current.requestFullscreen()
+          } else if ((demoScreenRef.current as any).webkitRequestFullscreen) {
+            await (demoScreenRef.current as any).webkitRequestFullscreen()
+          } else if ((demoScreenRef.current as any).mozRequestFullScreen) {
+            await (demoScreenRef.current as any).mozRequestFullScreen()
+          } else if ((demoScreenRef.current as any).msRequestFullscreen) {
+            await (demoScreenRef.current as any).msRequestFullscreen()
+          }
+        } catch {
+          // Native fullscreen rejected, in-app fullscreen is active!
         }
       } else {
-        // Выход из полноэкранного режима
-        if (document.exitFullscreen) {
-          await document.exitFullscreen()
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen()
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen()
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen()
+        setIsFullscreen(false)
+        try {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen()
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen()
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen()
+          } else if ((document as any).msExitFullscreen) {
+            await (document as any).msExitFullscreen()
+          }
+        } catch {
+          // Ignore
         }
       }
     } catch (error) {
       console.error('Ошибка переключения полноэкранного режима:', error)
+      setIsFullscreen(prev => !prev)
     }
   }
 
@@ -281,10 +291,11 @@ export function LessonPage() {
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement
       )
-      setIsFullscreen(isFullscreenActive)
+      if (isFullscreenActive) {
+        setIsFullscreen(true)
+      }
     }
 
-    // Проверяем начальное состояние
     handleFullscreenChange()
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
@@ -292,10 +303,12 @@ export function LessonPage() {
     document.addEventListener('mozfullscreenchange', handleFullscreenChange)
     document.addEventListener('MSFullscreenChange', handleFullscreenChange)
 
-    // Обработка клавиши F11
+    // Обработка клавиш F11 и Escape
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'F11') {
         e.preventDefault()
+        toggleFullscreen()
+      } else if (e.key === 'Escape' && isFullscreen) {
         toggleFullscreen()
       }
     }
@@ -309,7 +322,7 @@ export function LessonPage() {
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
       window.removeEventListener('keydown', handleKeyPress)
     }
-  }, [toggleFullscreen])
+  }, [isFullscreen])
 
   const activeButton = controlButtons.find(btn => btn.id === activeState)
   const demoContent = useMemo(() => getDemoContent(theme), [theme])
@@ -1816,7 +1829,14 @@ export function LessonPage() {
         )}
 
         {/* Right Zone - Demonstration Screen */}
-        <main ref={demoScreenRef} className="flex-1 p-4 lg:p-6 flex items-start justify-center overflow-y-auto relative">
+        <main
+          ref={demoScreenRef}
+          className={`flex-1 flex justify-center relative overflow-y-auto transition-all ${
+            isFullscreen
+              ? 'fixed inset-0 z-50 w-screen h-screen p-3 sm:p-5 lg:p-6 items-center bg-slate-950'
+              : 'p-4 lg:p-6 items-start'
+          }`}
+        >
           {/* Top Floating Glass Toolbar */}
           <div className={`
             absolute top-3 right-4 z-30
@@ -1910,10 +1930,19 @@ export function LessonPage() {
 
           <div
             ref={contentRef}
-            className="w-full flex justify-center transition-transform duration-300 origin-top"
+            className={`w-full flex justify-center transition-transform duration-300 origin-top ${
+              isFullscreen ? 'h-full items-center' : ''
+            }`}
             style={{ transform: `scale(${zoomLevel / 100})` }}
           >
-            <Card className={`w-full max-w-5xl flex flex-col items-center justify-start p-6 lg:p-8 rounded-3xl border ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-white/90'} backdrop-blur-md shadow-2xl relative overflow-hidden min-h-[560px]`}>
+            <Card className={`
+              w-full flex flex-col items-center border backdrop-blur-md shadow-2xl relative overflow-hidden transition-all duration-300
+              ${isFullscreen
+                ? 'max-w-none h-[calc(100vh-2.5rem)] rounded-2xl p-6 lg:p-10 justify-between'
+                : 'max-w-5xl min-h-[560px] rounded-3xl p-6 lg:p-8 justify-start'
+              }
+              ${theme === 'dark' ? 'border-white/10 bg-slate-900/60' : 'border-slate-200 bg-white/95'}
+            `}>
               {/* Whiteboard Drawing Layer */}
               <DrawingCanvas
                 isActive={isDrawingActive}
@@ -1929,25 +1958,25 @@ export function LessonPage() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeState + selectedTopicId}
-                  className="relative z-10 w-full"
+                  className={`relative z-10 w-full ${isFullscreen ? 'h-full flex flex-col justify-center' : ''}`}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.25 }}
                 >
                   {activeState === 'idle' ? (
-                    <div className="py-12 flex flex-col items-center text-center max-w-xl mx-auto">
+                    <div className={`flex flex-col items-center text-center mx-auto my-auto ${isFullscreen ? 'py-10 max-w-3xl' : 'py-12 max-w-xl'}`}>
                       <motion.div
-                        className={`w-20 h-20 mx-auto mb-6 rounded-3xl ${theme === 'dark' ? 'bg-primary-500/10 border border-primary-500/20 text-primary-400' : 'bg-primary-50 border border-primary-100 text-primary-600'} flex items-center justify-center shadow-lg shadow-primary-500/10`}
+                        className={`${isFullscreen ? 'w-24 h-24 mb-8' : 'w-20 h-20 mb-6'} mx-auto rounded-3xl ${theme === 'dark' ? 'bg-primary-500/10 border border-primary-500/20 text-primary-400' : 'bg-primary-50 border border-primary-100 text-primary-600'} flex items-center justify-center shadow-lg shadow-primary-500/10`}
                         initial={{ scale: 0.8, rotate: -5 }}
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
                       >
-                        <BookOpen size={36} />
+                        <BookOpen size={isFullscreen ? 44 : 36} />
                       </motion.div>
 
                       <motion.h1
-                        className={`text-3xl lg:text-4xl font-extrabold ${textColor} mb-3`}
+                        className={`${isFullscreen ? 'text-4xl sm:text-5xl mb-4' : 'text-3xl lg:text-4xl mb-3'} font-extrabold ${textColor}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.15 }}
@@ -1956,53 +1985,53 @@ export function LessonPage() {
                       </motion.h1>
 
                       <motion.p
-                        className={`text-base ${textMuted} mb-8 leading-relaxed max-w-md`}
+                        className={`${isFullscreen ? 'text-lg sm:text-xl mb-10 max-w-xl' : 'text-base mb-8 max-w-md'} ${textMuted} leading-relaxed`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
                       >
-                        Выберите раздел в пульте учителя слева для показа теории, интерактивных симуляций, решения задач или проведения тестирования.
+                        Выберите раздел в пульте учителя для показа теории, интерактивных симуляций, решения задач или проведения тестирования.
                       </motion.p>
 
                       {/* Quick launch shortcuts */}
-                      <div className="grid grid-cols-3 gap-3 w-full">
+                      <div className={`grid grid-cols-3 gap-4 w-full ${isFullscreen ? 'max-w-2xl' : ''}`}>
                         <button
                           onClick={() => setActiveState('theory')}
-                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                          className={`${isFullscreen ? 'p-5' : 'p-3.5'} rounded-2xl border text-left transition-all ${
                             theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
-                            <BookOpen size={16} />
+                          <div className={`${isFullscreen ? 'w-10 h-10 mb-3' : 'w-8 h-8 mb-2'} rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center`}>
+                            <BookOpen size={isFullscreen ? 20 : 16} />
                           </div>
-                          <div className={`text-xs font-semibold ${textColor}`}>Теория</div>
-                          <div className={`text-[11px] ${textMuted}`}>Интерактивные слайды</div>
+                          <div className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-semibold ${textColor}`}>Теория</div>
+                          <div className={`${isFullscreen ? 'text-xs' : 'text-[11px]'} ${textMuted}`}>Интерактивные слайды</div>
                         </button>
 
                         <button
                           onClick={() => setActiveState('simulations')}
-                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                          className={`${isFullscreen ? 'p-5' : 'p-3.5'} rounded-2xl border text-left transition-all ${
                             theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center mb-2">
-                            <Cpu size={16} />
+                          <div className={`${isFullscreen ? 'w-10 h-10 mb-3' : 'w-8 h-8 mb-2'} rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center`}>
+                            <Cpu size={isFullscreen ? 20 : 16} />
                           </div>
-                          <div className={`text-xs font-semibold ${textColor}`}>Симуляции</div>
-                          <div className={`text-[11px] ${textMuted}`}>Лабораторные опыты</div>
+                          <div className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-semibold ${textColor}`}>Симуляции</div>
+                          <div className={`${isFullscreen ? 'text-xs' : 'text-[11px]'} ${textMuted}`}>Лабораторные опыты</div>
                         </button>
 
                         <button
                           onClick={() => setActiveState('test')}
-                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                          className={`${isFullscreen ? 'p-5' : 'p-3.5'} rounded-2xl border text-left transition-all ${
                             theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center mb-2">
-                            <ClipboardCheck size={16} />
+                          <div className={`${isFullscreen ? 'w-10 h-10 mb-3' : 'w-8 h-8 mb-2'} rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center`}>
+                            <ClipboardCheck size={isFullscreen ? 20 : 16} />
                           </div>
-                          <div className={`text-xs font-semibold ${textColor}`}>Экспресс-тест</div>
-                          <div className={`text-[11px] ${textMuted}`}>Проверка знаний</div>
+                          <div className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-semibold ${textColor}`}>Экспресс-тест</div>
+                          <div className={`${isFullscreen ? 'text-xs' : 'text-[11px]'} ${textMuted}`}>Проверка знаний</div>
                         </button>
                       </div>
                     </div>
