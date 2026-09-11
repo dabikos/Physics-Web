@@ -1,8 +1,19 @@
-import { supabase, TopicRow, SubsectionRow, SectionRow } from './supabase'
+import { supabase, TopicRow, SubsectionRow, SectionRow, isSupabaseConfigured } from './supabase'
 import { LessonTopic, TopicSubsection } from '@/types'
+import { allTopics as localAllTopics, getAllTopicsForSection as getLocalTopicsForSection } from '@/data/allTopics'
 
 // Получить все разделы
 export async function getSections(): Promise<SectionRow[]> {
+  if (!isSupabaseConfigured) {
+    return [
+      { id: 'mechanics', title: 'Механика', description: 'Законы движения и взаимодействия тел', order_index: 1 },
+      { id: 'thermodynamics', title: 'Термодинамика', description: 'Тепловые явления и законы термодинамики', order_index: 2 },
+      { id: 'electricity', title: 'Электродинамика', description: 'Электрические и магнитные поля', order_index: 3 },
+      { id: 'optics', title: 'Оптика', description: 'Свет, отражение, преломление и волновые свойства', order_index: 4 },
+      { id: 'atomic', title: 'Атомная физика', description: 'Строение атома и квантовые явления', order_index: 5 },
+    ]
+  }
+
   const { data, error } = await supabase
     .from('sections')
     .select('*')
@@ -50,6 +61,10 @@ export async function getTopics(subsectionId: string): Promise<TopicRow[]> {
 
 // Получить все темы раздела
 export async function getAllTopicsForSection(sectionId: string): Promise<LessonTopic[]> {
+  if (!isSupabaseConfigured) {
+    return getLocalTopicsForSection(sectionId)
+  }
+
   const subsections = await getSubsections(sectionId)
   const allTopics: LessonTopic[] = []
 
@@ -72,6 +87,10 @@ export async function getAllTopicsForSection(sectionId: string): Promise<LessonT
 
 // Получить структуру разделов с подразделами и темами
 export async function getSectionsWithTopics(): Promise<Record<string, TopicSubsection[]>> {
+  if (!isSupabaseConfigured) {
+    return localAllTopics
+  }
+
   const sections = await getSections()
   const result: Record<string, TopicSubsection[]> = {}
 
@@ -106,6 +125,16 @@ export async function getSectionsWithTopics(): Promise<Record<string, TopicSubse
 
 // Получить одну тему по ID
 export async function getTopicById(topicId: string): Promise<LessonTopic | null> {
+  if (!isSupabaseConfigured) {
+    for (const subsections of Object.values(localAllTopics)) {
+      for (const sub of subsections) {
+        const found = sub.topics.find(t => t.id === topicId)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
   const { data, error } = await supabase
     .from('topics')
     .select('*')
@@ -134,6 +163,17 @@ export async function getTopicById(topicId: string): Promise<LessonTopic | null>
 export async function getTopicByTitle(title: string): Promise<LessonTopic | null> {
   const cleanTitle = title.trim()
   if (!cleanTitle) return null
+
+  if (!isSupabaseConfigured) {
+    const lower = cleanTitle.toLowerCase()
+    for (const subsections of Object.values(localAllTopics)) {
+      for (const sub of subsections) {
+        const found = sub.topics.find(t => t.title.toLowerCase().includes(lower))
+        if (found) return found
+      }
+    }
+    return null
+  }
 
   const { data, error } = await supabase
     .from('topics')

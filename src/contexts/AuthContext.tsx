@@ -40,11 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_KEY)
-    const storedUser = localStorage.getItem(USER_KEY)
-    if (storedToken) setToken(storedToken)
-    if (storedUser) setUser(JSON.parse(storedUser))
-    setLoading(false)
+    try {
+      const storedToken = localStorage.getItem(TOKEN_KEY)
+      const storedUser = localStorage.getItem(USER_KEY)
+      if (storedToken) setToken(storedToken)
+      if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
+        setUser(JSON.parse(storedUser))
+      }
+    } catch (e) {
+      console.warn('Failed to parse user from localStorage:', e)
+      localStorage.removeItem(USER_KEY)
+      localStorage.removeItem(TOKEN_KEY)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const signIn = async (email: string, password: string) => {

@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 
 export interface LessonTemplateRow {
   id: string
@@ -13,38 +13,103 @@ export interface LessonTemplateRow {
   updated_at?: string
 }
 
-export async function listLessonTemplates(ownerId?: string | null): Promise<LessonTemplateRow[]> {
-  let query = supabase.from('lesson_templates').select('*').order('created_at', { ascending: false })
-  if (ownerId) {
-    query = query.eq('owner_id', ownerId)
-  }
-  const { data, error } = await query
-  if (error) {
-    console.error('Ошибка загрузки уроков:', error)
+const LOCAL_STORAGE_KEY = 'saved_lesson_templates'
+
+function getLocalTemplates(): LessonTemplateRow[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
     return []
   }
-  return (data || []) as LessonTemplateRow[]
+}
+
+function saveLocalTemplates(templates: LessonTemplateRow[]) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(templates))
+  } catch (e) {
+    console.warn('Failed to save templates to localStorage', e)
+  }
+}
+
+export async function listLessonTemplates(ownerId?: string | null): Promise<LessonTemplateRow[]> {
+  if (!isSupabaseConfigured) {
+    const list = getLocalTemplates()
+    if (ownerId) return list.filter(t => t.owner_id === ownerId)
+    return list
+  }
+  try {
+    let query = supabase.from('lesson_templates').select('*').order('created_at', { ascending: false })
+    if (ownerId) {
+      query = query.eq('owner_id', ownerId)
+    }
+    const { data, error } = await query
+    if (error) {
+      console.warn('Supabase lessons error, fallback to local:', error.message)
+      return getLocalTemplates()
+    }
+    return (data || []) as LessonTemplateRow[]
+  } catch {
+    return getLocalTemplates()
+  }
 }
 
 export async function createLessonTemplate(template: Omit<LessonTemplateRow, 'id' | 'created_at' | 'updated_at'>): Promise<LessonTemplateRow | null> {
-  const { data, error } = await supabase
-    .from('lesson_templates')
-    .insert(template)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Ошибка создания урока:', error)
-    return null
+  const newTemplate: LessonTemplateRow = {
+    ...template,
+    id: `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   }
-  return data as LessonTemplateRow
+
+  if (!isSupabaseConfigured) {
+    const list = getLocalTemplates()
+    list.unshift(newTemplate)
+    saveLocalTemplates(list)
+    return newTemplate
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('lesson_templates')
+      .insert(template)
+      .select()
+      .single()
+
+    if (error) {
+      console.warn('Supabase create lesson error, saving to local storage:', error.message)
+      const list = getLocalTemplates()
+      list.unshift(newTemplate)
+      saveLocalTemplates(list)
+      return newTemplate
+    }
+    return data as LessonTemplateRow
+  } catch {
+    const list = getLocalTemplates()
+    list.unshift(newTemplate)
+    saveLocalTemplates(list)
+    return newTemplate
+  }
 }
 
 export async function deleteLessonTemplate(id: string): Promise<boolean> {
-  const { error } = await supabase.from('lesson_templates').delete().eq('id', id)
-  if (error) {
-    console.error('Ошибка удаления урока:', error)
-    return false
+  if (!isSupabaseConfigured) {
+    const list = getLocalTemplates().filter(t => t.id !== id)
+    saveLocalTemplates(list)
+    return true
   }
-  return true
+  try {
+    const { error } = await supabase.from('lesson_templates').delete().eq('id', id)
+    if (error) {
+      console.warn('Supabase delete lesson error:', error.message)
+      const list = getLocalTemplates().filter(t => t.id !== id)
+      saveLocalTemplates(list)
+      return true
+    }
+    return true
+  } catch {
+    const list = getLocalTemplates().filter(t => t.id !== id)
+    saveLocalTemplates(list)
+    return true
+  }
 }
