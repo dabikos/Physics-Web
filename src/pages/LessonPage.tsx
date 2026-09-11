@@ -128,6 +128,7 @@ const [simulationParams, setSimulationParams] = useState({
   const [interactiveError, setInteractiveError] = useState<string | null>(null)
   const [expandedInteractiveTasks, setExpandedInteractiveTasks] = useState<Record<string, boolean>>({})
   const [customProblemTopic, setCustomProblemTopic] = useState('')
+  const [problemsTab, setProblemsTab] = useState<'classic' | 'interactive'>('classic')
   const [aiExplainItems, setAiExplainItems] = useState<AiExplainQA[]>([])
   const [isGeneratingAiExplain, setIsGeneratingAiExplain] = useState(false)
   const [aiExplainError, setAiExplainError] = useState<string | null>(null)
@@ -748,55 +749,71 @@ const [simulationParams, setSimulationParams] = useState({
       )
     }
 
-      switch (activeState) {
-        case 'theory':
-          return (
-            <div className="w-full mx-auto text-left space-y-6">
-            {/* Иконка */}
-            <motion.div
-              className="flex justify-center mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className={`w-20 h-20 rounded-2xl ${theme === 'dark' ? 'bg-blue-500/20 border border-blue-500/30' : 'bg-blue-100 border border-blue-200'} flex items-center justify-center`}>
-                <BookOpen size={40} className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />
-              </div>
-            </motion.div>
-
-            <div className="text-center mb-6">
-              <h2 className={`text-3xl font-bold ${textColor} mb-2`}>{selectedTopic.title}</h2>
-              <p className={`${textMuted} text-lg`}>{selectedTopic.description}</p>
+    const renderSectionHeader = (
+      icon: React.ReactNode,
+      title: string,
+      badgeColor: string,
+      actions?: React.ReactNode,
+      subtitle?: string
+    ) => (
+      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 border-b border-white/5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${badgeColor}`}>
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className={`text-base sm:text-lg font-bold truncate ${textColor}`}>{title}</h2>
+              {selectedTopics.length > 1 && (
+                <select
+                  value={selectedTopicId || ''}
+                  onChange={(e) => {
+                    setSelectedTopicId(e.target.value)
+                    setGeneratedProblems([])
+                    setInteractiveTasks([])
+                  }}
+                  className={`text-xs px-2 py-0.5 rounded-lg border font-medium cursor-pointer ${
+                    theme === 'dark' ? 'bg-slate-800 border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-700'
+                  }`}
+                >
+                  {selectedTopics.map(t => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+                </select>
+              )}
             </div>
+            {subtitle && <p className={`${textMuted} text-[11px] truncate max-w-lg`}>{subtitle}</p>}
+          </div>
+        </div>
+        {actions && <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">{actions}</div>}
+      </div>
+    )
+
+    switch (activeState) {
+      case 'theory':
+        return (
+          <div className="w-full mx-auto text-left space-y-3">
+            {renderSectionHeader(
+              <BookOpen size={16} />,
+              `Теория: ${selectedTopic.title}`,
+              theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600',
+              null,
+              selectedTopic.description
+            )}
             <TheorySlides
               theory={selectedTopic.theory || ''}
               topicTitle={selectedTopic.title}
               topicDescription={selectedTopic.description}
               topicId={selectedTopic.id}
               onTheoryGenerated={(newTheory, formulas) => {
-                // Обновляем теорию и формулы в теме
                 updateTopic(selectedTopic.id, {
                   theory: newTheory,
                   formulas: formulas && formulas.length > 0 ? formulas : selectedTopic.formulas
                 })
               }}
             />
-            {selectedTopics.length > 1 && (
-              <div className="flex gap-2 flex-wrap justify-center mt-6">
-                {selectedTopics.map(topic => (
-                  <Button
-                    key={topic.id}
-                    variant={selectedTopicId === topic.id ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => setSelectedTopicId(topic.id)}
-                  >
-                    {topic.title}
-                  </Button>
-                ))}
-              </div>
-            )}
-            </div>
-          )
+          </div>
+        )
 
         case 'simulations': {
   const simulationIconMap: Record<SimulationId, React.ReactNode> = {
@@ -871,26 +888,23 @@ const [simulationParams, setSimulationParams] = useState({
   if (selectedSimulationId) {
     const selectedMeta = simulationCatalog.find((item) => item.id === selectedSimulationId)
     return (
-      <div className="w-full mx-auto text-left space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className={`text-3xl font-bold ${textColor} mb-2`}>
-              {selectedMeta?.title || ''}
-            </h2>
-            <p className={`${textMuted} text-lg`}>
-              {selectedMeta?.description || ''}
-            </p>
-          </div>
+      <div className="w-full mx-auto text-left space-y-4">
+        {renderSectionHeader(
+          <Cpu size={16} />,
+          selectedMeta?.title || 'Симуляция',
+          theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600',
           <Button
             variant="secondary"
-            size="md"
+            size="sm"
             onClick={() => setSelectedSimulationId(null)}
+            className="h-8 text-xs px-3"
           >
-            {'\u041d\u0430\u0437\u0430\u0434 \u043a \u0441\u043f\u0438\u0441\u043a\u0443'}
-          </Button>
-        </div>
+            ← К каталогу
+          </Button>,
+          selectedMeta?.description
+        )}
 
-        <div className="space-y-8">
+        <div className="space-y-4">
           {selectedSimulationId === 'uniform-acceleration' && (
             <UniformAccelerationSimulation
               topicTitle={selectedTopic.title}
@@ -940,81 +954,47 @@ const [simulationParams, setSimulationParams] = useState({
   }
 
   return (
-    <div className="w-full mx-auto text-left space-y-8">
-      <div className="text-center">
-        <motion.div
-          className="flex justify-center mb-6"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div
-            className={`w-20 h-20 rounded-2xl ${
-              theme === 'dark'
-                ? 'bg-purple-500/20 border border-purple-500/30'
-                : 'bg-purple-100 border border-purple-200'
-            } flex items-center justify-center`}
-          >
-            <Cpu size={40} className={theme === 'dark' ? 'text-purple-400' : 'text-purple-600'} />
-          </div>
-        </motion.div>
-        <h2 className={`text-3xl font-bold ${textColor} mb-2`}>
-          {'\u0421\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u0438: '} {selectedTopic.title}
-        </h2>
-        <p className={`${textMuted} text-lg`}>
-          {'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043d\u0443\u0436\u043d\u0443\u044e \u0441\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u044e \u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u0435\u0435 \u0432 \u044d\u0442\u043e\u043c \u0436\u0435 \u044d\u043a\u0440\u0430\u043d\u0435.'}
-        </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="w-full mx-auto text-left space-y-4">
+      {renderSectionHeader(
+        <Cpu size={16} />,
+        `Симуляции: ${selectedTopic.title}`,
+        theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600',
+        null,
+        'Интерактивные виртуальные опыты для демонстрации физических законов'
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {simulationCatalog.map((simulation) => (
-          <Card
+          <div
             key={simulation.id}
-            className={`${bgCard} ${borderColor} p-6 h-full flex flex-col`}
-            hover
             onClick={() => setSelectedSimulationId(simulation.id)}
+            className={`rounded-2xl border ${borderColor} ${bgCard} p-4 flex flex-col cursor-pointer transition-all hover:border-purple-500/50 hover:shadow-lg group`}
           >
-            <div
-              className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
-                theme === 'dark'
-                  ? 'bg-white/10 text-white'
-                  : 'bg-slate-100 text-slate-700'
-              }`}
-            >
-              {simulationIconMap[simulation.id]}
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${theme === 'dark' ? 'bg-white/10 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
+                {simulationIconMap[simulation.id]}
+              </div>
+              <h3 className={`text-sm font-bold ${textColor} truncate`}>
+                {simulation.title}
+              </h3>
             </div>
-            <div
-              className={`h-24 rounded-xl mb-4 flex items-center justify-center ${
-                theme === 'dark'
-                  ? 'bg-white/5 border border-white/10'
-                  : 'bg-slate-100 border border-slate-200'
-              }`}
-            >
+            <div className={`h-20 rounded-xl mb-3 flex items-center justify-center overflow-hidden ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200'}`}>
               {simulationPreviewMap[simulation.id]}
             </div>
-            <h3 className={`text-xl font-semibold ${textColor} mb-2`}>
-              {simulation.title}
-            </h3>
-            <p className={`${textMuted} text-sm mb-4 flex-1`}>
+            <p className={`${textMuted} text-xs mb-3 flex-1 line-clamp-2`}>
               {simulation.description}
             </p>
-            <div className="flex flex-wrap gap-2 mb-5">
+            <div className="flex flex-wrap gap-1 mb-3">
               {simulation.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    theme === 'dark'
-                      ? 'bg-white/10 text-white/70'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
+                <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full ${theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-slate-100 text-slate-600'}`}>
                   {tag}
                 </span>
               ))}
             </div>
-            <Button variant="primary" size="md" className="w-full">
-              {'\u041e\u0442\u043a\u0440\u044b\u0442\u044c'}
+            <Button variant="primary" size="sm" className="w-full h-8 text-xs font-semibold">
+              Запустить
             </Button>
-          </Card>
+          </div>
         ))}
       </div>
     </div>
@@ -1023,80 +1003,54 @@ const [simulationParams, setSimulationParams] = useState({
 
         case 'formulas':
           return (
-            <div className="w-full max-w-5xl mx-auto text-left space-y-6">
-            {/* Иконка */}
-            <motion.div
-              className="flex justify-center mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className={`w-20 h-20 rounded-2xl ${theme === 'dark' ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-emerald-100 border border-emerald-200'} flex items-center justify-center`}>
-                <FunctionSquare size={40} className={theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'} />
-              </div>
-            </motion.div>
+            <div className="w-full mx-auto text-left space-y-4">
+              {renderSectionHeader(
+                <FunctionSquare size={16} />,
+                `Формулы: ${selectedTopic.title}`,
+                theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600',
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                  {selectedTopic.formulas?.length || 0} формул
+                </span>,
+                selectedTopic.description
+              )}
 
-            <div className="text-center mb-6">
-              <h2 className={`text-3xl font-bold ${textColor} mb-2`}>Формулы: {selectedTopic.title}</h2>
-              <p className={`${textMuted} text-lg`}>{selectedTopic.description}</p>
-            </div>
-            {selectedTopic.formulas && selectedTopic.formulas.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {selectedTopic.formulas.map((formula, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Card
-                      className={`${bgCard} ${borderColor} p-6 hover:shadow-xl transition-all duration-300 hover:border-emerald-500/50 group cursor-pointer h-full flex flex-col min-h-[160px] relative z-10`}
+              {selectedTopic.formulas && selectedTopic.formulas.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {selectedTopic.formulas.map((formula, index) => (
+                    <div
+                      key={index}
+                      className={`rounded-2xl border ${borderColor} ${bgCard} p-3.5 hover:shadow-lg transition-all hover:border-emerald-500/50 group cursor-pointer flex flex-col justify-between`}
                       onClick={(e) => {
                         e.stopPropagation()
                         setSelectedFormula(formula)
                         setSelectedFormulaIndex(index)
                         setIsFormulaModalOpen(true)
                       }}
-                      style={{ pointerEvents: 'auto' }}
                     >
-                      <div className="flex flex-col items-center text-center gap-4 h-full">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full ${theme === 'dark' ? 'bg-emerald-500/20 group-hover:bg-emerald-500/30' : 'bg-emerald-100 group-hover:bg-emerald-200'} flex items-center justify-center transition-all duration-300 group-hover:scale-110`}>
-                          <span className={`text-base font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                            {index + 1}
-                          </span>
-                        </div>
-                        <div className="w-full flex justify-center items-center flex-1 py-3 overflow-hidden">
-                          <FormulaDisplay formula={formula} className={`${textColor} text-center w-full`} displayMode={true} />
-                        </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-bold ${theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {index + 1}
+                        </span>
+                        <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">Подробнее →</span>
                       </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <Card className={`${bgCard} ${borderColor} p-8 text-center`}>
-                <p className={textMuted}>
-                  Формулы для этой темы находятся в разработке.
-                  Вы можете использовать AI-ассистента для получения формул.
-                </p>
-              </Card>
-            )}
-            {selectedTopics.length > 1 && (
-              <div className="flex gap-2 flex-wrap justify-center mt-6">
-                {selectedTopics.map(topic => (
-                  <Button
-                    key={topic.id}
-                    variant={selectedTopicId === topic.id ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => setSelectedTopicId(topic.id)}
-                  >
-                    {topic.title}
+                      <div className="py-2 flex justify-center items-center">
+                        <FormulaDisplay formula={formula} className={`${textColor} text-center w-full text-sm sm:text-base`} displayMode={true} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={`rounded-2xl border ${borderColor} ${bgCard} p-8 text-center space-y-3`}>
+                  <p className={`text-xs ${textMuted}`}>
+                    Формулы для этой темы пока не извлечены. Сгенерируйте теорию — формулы будут автоматически добавлены сюда.
+                  </p>
+                  <Button variant="primary" size="sm" onClick={() => setActiveState('theory')}>
+                    Перейти к теории
                   </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        )
+                </div>
+              )}
+            </div>
+          )
 
       case 'problems':
         if (!selectedTopic && !customProblemTopic.trim()) {
@@ -1149,170 +1103,152 @@ const [simulationParams, setSimulationParams] = useState({
         }
 
         return (
-          <div className="w-full max-w-4xl mx-auto text-left space-y-6">
-            {/* Иконка */}
-            <motion.div
-              className="flex justify-center mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className={`w-20 h-20 rounded-2xl ${theme === 'dark' ? 'bg-orange-500/20 border border-orange-500/30' : 'bg-orange-100 border border-orange-200'} flex items-center justify-center`}>
-                <Puzzle size={40} className={theme === 'dark' ? 'text-orange-400' : 'text-orange-600'} />
-              </div>
-            </motion.div>
+          <div className="w-full mx-auto text-left space-y-3">
+            {renderSectionHeader(
+              <Puzzle size={16} />,
+              `Задачи: ${generationTopicTitle}`,
+              theme === 'dark' ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600',
+              <div className="flex items-center gap-2">
+                {/* Вкладки: Обычные / Интерактивные */}
+                <div className={`p-0.5 rounded-xl border flex items-center ${theme === 'dark' ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                  <button
+                    onClick={() => setProblemsTab('classic')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      problemsTab === 'classic'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : `${textMuted} hover:${textColor}`
+                    }`}
+                  >
+                    Задачи ({displayProblems.length})
+                  </button>
+                  <button
+                    onClick={() => setProblemsTab('interactive')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      problemsTab === 'interactive'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : `${textMuted} hover:${textColor}`
+                    }`}
+                  >
+                    Интерактивные ({interactiveTasks.length})
+                  </button>
+                </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div>
-                <h2 className={`text-3xl font-bold ${textColor}`}>Задачи: {generationTopicTitle}</h2>
-                <p className={`${textMuted} text-sm mt-1`}>Выберите тему из списка или введите свою</p>
+                {problemsTab === 'classic' ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleGenerateProblems}
+                    disabled={isGeneratingProblems}
+                    className="h-8 text-xs px-3 flex items-center gap-1.5 shadow-sm"
+                  >
+                    {isGeneratingProblems ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                    <span>{displayProblems.length > 0 ? 'Обновить' : 'Создать'}</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleGenerateInteractiveTasks}
+                    disabled={isGeneratingInteractive}
+                    className="h-8 text-xs px-3 flex items-center gap-1.5 shadow-sm"
+                  >
+                    {isGeneratingInteractive ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                    <span>{interactiveTasks.length > 0 ? 'Обновить' : 'Создать'}</span>
+                  </Button>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onClick={handleGenerateInteractiveTasks}
-                  disabled={isGeneratingInteractive}
-                  className="flex items-center gap-2"
+            )}
+
+            {/* Компактная полоса выбора темы */}
+            <div className={`rounded-xl border ${borderColor} ${bgCard} p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-xs`}>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className={`${textMuted} text-[11px] whitespace-nowrap`}>Тема урока:</span>
+                <select
+                  className={`rounded-lg px-2.5 py-1 text-xs flex-1 ${theme === 'dark' ? 'bg-slate-900 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
+                  value={selectedTopicId || ''}
+                  onChange={(e) => {
+                    setSelectedTopicId(e.target.value)
+                    setCustomProblemTopic('')
+                    setGeneratedProblems([])
+                    setInteractiveTasks([])
+                    setExpandedInteractiveTasks({})
+                  }}
                 >
-                  {isGeneratingInteractive ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      Генерация...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={20} />
-                      Интерактивные задачи
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleGenerateProblems}
-                  disabled={isGeneratingProblems}
-                  className="flex items-center gap-2"
-                >
-                  {isGeneratingProblems ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      Генерация...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={20} />
-                      Сгенерировать задачи
-                    </>
-                  )}
-                </Button>
+                  {selectedTopics.map(topic => (
+                    <option key={topic.id} value={topic.id}>{topic.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className={`${textMuted} text-[11px] whitespace-nowrap`}>Своя тема:</span>
+                <input
+                  className={`rounded-lg px-2.5 py-1 text-xs flex-1 ${theme === 'dark' ? 'bg-slate-900 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
+                  placeholder="Например: Закон всемирного тяготения"
+                  value={customProblemTopic}
+                  onChange={(e) => setCustomProblemTopic(e.target.value)}
+                />
               </div>
             </div>
 
-            <Card className={`${bgCard} ${borderColor} p-4`}>
-              <div className="grid gap-3 md:grid-cols-[240px,1fr] items-center">
-                <div>
-                  <label className={`${textMuted} text-xs uppercase tracking-wide`}>Тема из списка</label>
-                  <select
-                    className={`mt-1 w-full rounded-lg px-3 py-2 text-sm ${theme === 'dark' ? 'bg-slate-900/60 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
-                    value={selectedTopicId || ''}
-                    onChange={(e) => {
-                      setSelectedTopicId(e.target.value)
-                      setCustomProblemTopic('')
-                      setGeneratedProblems([])
-                      setInteractiveTasks([])
-                      setExpandedInteractiveTasks({})
-                    }}
-                  >
-                    {selectedTopics.map(topic => (
-                      <option key={topic.id} value={topic.id}>{topic.title}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={`${textMuted} text-xs uppercase tracking-wide`}>Своя тема</label>
-                  <input
-                    className={`mt-1 w-full rounded-lg px-3 py-2 text-sm ${theme === 'dark' ? 'bg-slate-900/60 text-white border border-white/10' : 'bg-white text-slate-900 border border-slate-200'}`}
-                    placeholder="Например: Второй закон Ньютона"
-                    value={customProblemTopic}
-                    onChange={(e) => setCustomProblemTopic(e.target.value)}
-                  />
-                </div>
-              </div>
-            </Card>
-
             {problemsError && (
-              <Card className={`${bgCard} ${borderColor} p-4`}>
-                <p className={theme === 'dark' ? 'text-red-400' : 'text-red-700'}>
-                  {problemsError}
-                </p>
-              </Card>
+              <div className={`p-2.5 rounded-xl text-xs ${theme === 'dark' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-red-50 text-red-700'}`}>
+                {problemsError}
+              </div>
             )}
 
-            {displayProblems.length > 0 ? (
-              <div className="space-y-6">
-                {displayProblems.map((problem, index) => (
-                  <Card key={index} className={`${bgCard} ${borderColor} p-6 hover:shadow-lg transition-shadow`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-full ${theme === 'dark' ? 'bg-orange-500/20' : 'bg-orange-100'} flex items-center justify-center`}>
-                        <span className={`font-bold text-xl ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
+            {interactiveError && (
+              <div className={`p-2.5 rounded-xl text-xs ${theme === 'dark' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-red-50 text-red-700'}`}>
+                {interactiveError}
+              </div>
+            )}
+
+            {/* Контент: Классические задачи */}
+            {problemsTab === 'classic' && (
+              displayProblems.length > 0 ? (
+                <div className="space-y-2.5">
+                  {displayProblems.map((problem, index) => (
+                    <div key={index} className={`rounded-2xl border ${borderColor} ${bgCard} p-4 hover:shadow-md transition-shadow`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs ${theme === 'dark' ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
                           {index + 1}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <ProblemRenderer
-                          problem={problem}
-                          className="text-lg leading-relaxed"
-                        />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <ProblemRenderer
+                            problem={problem}
+                            className="text-xs sm:text-sm leading-relaxed"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className={`${bgCard} ${borderColor} p-6`}>
-                <div className="text-center space-y-4">
-                  <p className={textMuted}>Задачи для этой темы пока не добавлены</p>
+                  ))}
+                </div>
+              ) : (
+                <div className={`rounded-2xl border ${borderColor} ${bgCard} p-8 text-center space-y-3`}>
+                  <div className={`w-12 h-12 rounded-2xl mx-auto flex items-center justify-center ${theme === 'dark' ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600'}`}>
+                    <Puzzle size={24} />
+                  </div>
+                  <h3 className={`text-sm font-bold ${textColor}`}>Задачи еще не добавлены</h3>
+                  <p className={`text-xs ${textMuted} max-w-sm mx-auto`}>
+                    Нажмите кнопку ниже, чтобы сгенерировать практические задачи с пошаговыми решениями по теме «{generationTopicTitle}».
+                  </p>
                   <Button
                     variant="primary"
+                    size="sm"
                     onClick={handleGenerateProblems}
                     disabled={isGeneratingProblems}
-                    className="flex items-center gap-2 mx-auto"
+                    className="mx-auto h-8 px-4 text-xs font-semibold"
                   >
-                    {isGeneratingProblems ? (
-                      <>
-                        <Loader2 size={20} className="animate-spin" />
-                        Генерация...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={20} />
-                        Сгенерировать задачи
-                      </>
-                    )}
+                    {isGeneratingProblems ? <Loader2 size={13} className="animate-spin mr-1.5" /> : <Sparkles size={13} className="mr-1.5" />}
+                    Сгенерировать задачи
                   </Button>
                 </div>
-              </Card>
+              )
             )}
 
-            <div className="pt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className={`text-2xl font-bold ${textColor}`}>Интерактивные задачи</h3>
-                <span className={`${textMuted} text-sm`}>
-                  {interactiveTasks.length > 0 ? `Сгенерировано: ${interactiveTasks.length}` : 'Пока нет'}
-                </span>
-              </div>
-
-              {interactiveError && (
-                <Card className={`${bgCard} ${borderColor} p-4`}>
-                  <p className={theme === 'dark' ? 'text-red-400' : 'text-red-700'}>
-                    {interactiveError}
-                  </p>
-                </Card>
-              )}
-
-              {interactiveTasks.length > 0 ? (
-                <div className="space-y-6">
+            {/* Контент: Интерактивные задачи */}
+            {problemsTab === 'interactive' && (
+              interactiveTasks.length > 0 ? (
+                <div className="space-y-3">
                   {interactiveTasks.map((task, index) => (
                     <InteractiveTaskCard
                       key={task.id}
@@ -1324,50 +1260,26 @@ const [simulationParams, setSimulationParams] = useState({
                   ))}
                 </div>
               ) : (
-                <Card className={`${bgCard} ${borderColor} p-6`}>
-                  <div className="text-center space-y-3">
-                    <p className={textMuted}>Интерактивные задачи пока не сгенерированы</p>
-                    <Button
-                      variant="secondary"
-                      onClick={handleGenerateInteractiveTasks}
-                      disabled={isGeneratingInteractive}
-                      className="flex items-center gap-2 mx-auto"
-                    >
-                      {isGeneratingInteractive ? (
-                        <>
-                          <Loader2 size={20} className="animate-spin" />
-                          Генерация...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={20} />
-                          Сгенерировать интерактивные задачи
-                        </>
-                      )}
-                    </Button>
+                <div className={`rounded-2xl border ${borderColor} ${bgCard} p-8 text-center space-y-3`}>
+                  <div className={`w-12 h-12 rounded-2xl mx-auto flex items-center justify-center ${theme === 'dark' ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-50 text-orange-600'}`}>
+                    <Sparkles size={24} />
                   </div>
-                </Card>
-              )}
-            </div>
-
-            {selectedTopics.length > 1 && (
-              <div className="flex gap-2 flex-wrap justify-center">
-                {selectedTopics.map(topic => (
+                  <h3 className={`text-sm font-bold ${textColor}`}>Интерактивные задачи не созданы</h3>
+                  <p className={`text-xs ${textMuted} max-w-sm mx-auto`}>
+                    Интерактивные задачи содержат разбор Дано / Найти, варианты ответов, подсказки и расчетные шаги.
+                  </p>
                   <Button
-                    key={topic.id}
-                    variant={selectedTopicId === topic.id ? 'primary' : 'secondary'}
+                    variant="primary"
                     size="sm"
-                    onClick={() => {
-                      setSelectedTopicId(topic.id)
-                      setGeneratedProblems([]) // Сбрасываем сгенерированные задачи при смене темы
-                      setInteractiveTasks([])
-                      setExpandedInteractiveTasks({})
-                    }}
+                    onClick={handleGenerateInteractiveTasks}
+                    disabled={isGeneratingInteractive}
+                    className="mx-auto h-8 px-4 text-xs font-semibold"
                   >
-                    {topic.title}
+                    {isGeneratingInteractive ? <Loader2 size={13} className="animate-spin mr-1.5" /> : <Sparkles size={13} className="mr-1.5" />}
+                    Сгенерировать интерактивные задачи
                   </Button>
-                ))}
-              </div>
+                </div>
+              )
             )}
           </div>
         )
@@ -1397,95 +1309,111 @@ const [simulationParams, setSimulationParams] = useState({
         }
 
         // Показываем тест, если он сгенерирован
-          if (testQuestions.length > 0) {
-            return (
-              <div className="space-y-6">
-                <TestViewer
-                  questions={testQuestions}
-                  onComplete={(answers) => {
-                    // Вычисляем результаты
-                    const correctAnswers = answers.reduce((count, answer, index) => {
-                      // Считаем правильным только если ответ дан и он правильный
-                      if (answer >= 0 && answer === testQuestions[index].correctAnswer) {
-                        return count + 1
-                      }
-                      return count
-                    }, 0)
-
-                    const score = Math.round((correctAnswers / testQuestions.length) * 100)
-
-                    const result: TestResult = {
-                      totalQuestions: testQuestions.length,
-                      correctAnswers,
-                      score,
-                      answers: testQuestions.map((question, index) => ({
-                        questionId: index,
-                        selectedAnswer: answers[index] >= 0 ? answers[index] : null,
-                        correctAnswer: question.correctAnswer,
-                        isCorrect: answers[index] >= 0 && answers[index] === question.correctAnswer,
-                        explanation: question.explanation
-                      }))
-                    }
-
-                    setTestResult(result)
-                    setTestAnswers(answers)
+        if (testQuestions.length > 0) {
+          return (
+            <div className="space-y-4">
+              {renderSectionHeader(
+                <ClipboardCheck size={16} />,
+                `Тест: ${selectedTopic.title}`,
+                theme === 'dark' ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-50 text-rose-600',
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setTestQuestions([])
+                    setTestAnswers([])
+                    setTestResult(null)
                   }}
-                />
+                  className="h-8 text-xs px-3"
+                >
+                  Пересоздать тест
+                </Button>
+              )}
 
-                <Card className={`w-full p-6 ${bgCard} ${borderColor}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className={`text-lg font-semibold ${textColor}`}>Ученики и варианты теста</h3>
-                      <p className={textMuted}>Показываются подключенные ученики и их вариант</p>
-                    </div>
-                    {demoTestSummary && (
-                      <div className={`text-sm ${textMuted}`}>
-                        Средний: {demoTestSummary.average}% • Всего: {demoTestSummary.count}
-                      </div>
-                    )}
+              <TestViewer
+                questions={testQuestions}
+                onComplete={(answers) => {
+                  const correctAnswers = answers.reduce((count, answer, index) => {
+                    if (answer >= 0 && answer === testQuestions[index].correctAnswer) {
+                      return count + 1
+                    }
+                    return count
+                  }, 0)
+
+                  const score = Math.round((correctAnswers / testQuestions.length) * 100)
+
+                  const result: TestResult = {
+                    totalQuestions: testQuestions.length,
+                    correctAnswers,
+                    score,
+                    answers: testQuestions.map((question, index) => ({
+                      questionId: index,
+                      selectedAnswer: answers[index] >= 0 ? answers[index] : null,
+                      correctAnswer: question.correctAnswer,
+                      isCorrect: answers[index] >= 0 && answers[index] === question.correctAnswer,
+                      explanation: question.explanation
+                    }))
+                  }
+
+                  setTestResult(result)
+                  setTestAnswers(answers)
+                }}
+              />
+
+              <div className={`rounded-2xl border ${borderColor} ${bgCard} p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className={`text-xs font-bold ${textColor}`}>Подключенные ученики и варианты</h4>
+                    <p className={`text-[11px] ${textMuted}`}>Результаты прохождения в реальном времени</p>
                   </div>
-
-                  {connectedStudents.length === 0 ? (
-                    <div className={textMuted}>Пока никто не подключился.</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {connectedStudents.map((student) => {
-                        const result = demoTestResults[student.id]
-                        const variantIndex =
-                          (typeof result?.variant_index === 'number' ? result.variant_index + 1 : null) ??
-                          variantMap[student.id] ??
-                          1
-                        return (
-                          <div
-                            key={student.id}
-                            className={`flex items-center justify-between rounded-xl px-4 py-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}
-                          >
-                            <div>
-                              <div className={`${textColor} font-medium`}>
-                                {student.name || 'Ученик'}
-                              </div>
-                              <div className={`${textMuted} text-sm`}>
-                                Вариант {variantIndex}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              {result ? (
-                                <div className="text-emerald-500 font-semibold">
-                                  {result.score}% ({result.correct}/{result.total})
-                                </div>
-                              ) : (
-                                <div className={textMuted}>Ожидает</div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
+                  {demoTestSummary && (
+                    <div className="text-xs font-mono text-emerald-400">
+                      Средний балл: {demoTestSummary.average}% • Сдали: {demoTestSummary.count}
                     </div>
                   )}
-                </Card>
+                </div>
+
+                {connectedStudents.length === 0 ? (
+                  <div className={`text-xs ${textMuted}`}>Пока никто не подключился к сессии.</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {connectedStudents.map((student) => {
+                      const result = demoTestResults[student.id]
+                      const variantIndex =
+                        (typeof result?.variant_index === 'number' ? result.variant_index + 1 : null) ??
+                        variantMap[student.id] ??
+                        1
+                      return (
+                        <div
+                          key={student.id}
+                          className={`flex items-center justify-between rounded-xl px-3 py-2 border text-xs ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'}`}
+                        >
+                          <div>
+                            <div className={`${textColor} font-semibold truncate`}>
+                              {student.name || 'Ученик'}
+                            </div>
+                            <div className={`${textMuted} text-[10px]`}>
+                              Вариант {variantIndex}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {result ? (
+                              <div className="text-emerald-400 font-mono font-bold text-xs">
+                                {result.score}%
+                              </div>
+                            ) : (
+                              <div className={`text-[11px] ${textMuted}`}>Ожидает</div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-            )
-          }
+            </div>
+          )
+        }
 
         // Показываем генератор теста
         const handleGenerateTest = async (config: TestConfig) => {
@@ -1504,48 +1432,20 @@ const [simulationParams, setSimulationParams] = useState({
         }
 
         return (
-          <div className="w-full">
-            {/* Иконка */}
-            <motion.div
-              className="flex justify-center mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className={`w-20 h-20 rounded-2xl ${theme === 'dark' ? 'bg-rose-500/20 border border-rose-500/30' : 'bg-rose-100 border border-rose-200'} flex items-center justify-center`}>
-                <ClipboardCheck size={40} className={theme === 'dark' ? 'text-rose-400' : 'text-rose-600'} />
-              </div>
-            </motion.div>
-
-            <div className="text-center mb-6">
-              <h2 className={`text-3xl font-bold ${textColor} mb-2`}>Тест: {selectedTopic.title}</h2>
-              <p className={`${textMuted} text-lg`}>{selectedTopic.description}</p>
-            </div>
+          <div className="w-full mx-auto text-left space-y-4">
+            {renderSectionHeader(
+              <ClipboardCheck size={16} />,
+              `Тест: ${selectedTopic.title}`,
+              theme === 'dark' ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-50 text-rose-600',
+              null,
+              selectedTopic.description
+            )}
             <TestGenerator
               topicTitle={selectedTopic.title}
               onGenerate={handleGenerateTest}
               isGenerating={isGeneratingTest}
               error={testError}
             />
-            {selectedTopics.length > 1 && (
-              <div className="flex gap-2 flex-wrap justify-center mt-6">
-                {selectedTopics.map(topic => (
-                  <Button
-                    key={topic.id}
-                    variant={selectedTopicId === topic.id ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => {
-                      setSelectedTopicId(topic.id)
-                      setTestQuestions([])
-                      setTestResult(null)
-                      setTestAnswers([])
-                    }}
-                  >
-                    {topic.title}
-                  </Button>
-                ))}
-              </div>
-            )}
           </div>
         )
 

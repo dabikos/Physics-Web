@@ -52,16 +52,19 @@ export function TestViewer({ questions, onComplete }: TestViewerProps) {
   const allAnswered = answers.every(a => a !== null)
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-4xl mx-auto space-y-4">
       {/* Прогресс */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`text-sm font-medium ${textMuted}`}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-xs font-semibold ${textMuted}`}>
               Вопрос {currentQuestion + 1} из {questions.length}
             </span>
+            <span className="text-[11px] text-primary-400 font-mono">
+              {Math.round(((currentQuestion + 1) / questions.length) * 100)}%
+            </span>
           </div>
-          <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-primary-600 transition-all duration-300"
               style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
@@ -71,15 +74,15 @@ export function TestViewer({ questions, onComplete }: TestViewerProps) {
       </div>
 
       {/* Вопрос */}
-      <Card className={`${bgCard} ${borderColor} p-8`}>
-        <div className="mb-6">
-          <h3 className={`text-2xl font-bold ${textColor} mb-4`}>
+      <Card className={`${bgCard} ${borderColor} p-5 sm:p-6 rounded-2xl shadow-lg`}>
+        <div className="mb-4">
+          <h3 className={`text-base sm:text-lg font-bold ${textColor} leading-snug`}>
             <MarkdownRenderer content={question.question} />
           </h3>
         </div>
 
         {/* Варианты ответов */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === index
             const optionLabel = String.fromCharCode(65 + index) // A, B, C, D
@@ -89,14 +92,14 @@ export function TestViewer({ questions, onComplete }: TestViewerProps) {
                 key={index}
                 onClick={() => handleSelectAnswer(index)}
                 className={`
-                  w-full p-4 rounded-xl border-2 transition-all duration-200 text-left
+                  w-full p-3 rounded-xl border transition-all duration-200 text-left
                   ${isSelected ? optionSelected : `${optionBg} ${optionBorder}`}
                   ${isSelected ? 'ring-2 ring-primary-400' : ''}
                 `}
               >
                 <div className="flex items-center gap-3">
                   <div className={`
-                    w-8 h-8 rounded-full flex items-center justify-center font-bold
+                    w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0
                     ${isSelected 
                       ? 'bg-white/20 text-white' 
                       : theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-slate-200 text-slate-700'
@@ -104,11 +107,11 @@ export function TestViewer({ questions, onComplete }: TestViewerProps) {
                   `}>
                     {optionLabel}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 text-xs sm:text-sm">
                     <MarkdownRenderer content={option} />
                   </div>
                   {isSelected && (
-                    <CheckCircle2 size={20} className="text-white" />
+                    <CheckCircle2 size={16} className="text-white shrink-0" />
                   )}
                 </div>
               </button>
@@ -118,49 +121,47 @@ export function TestViewer({ questions, onComplete }: TestViewerProps) {
       </Card>
 
       {/* Навигация */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-1">
         <Button
           variant="secondary"
-          size="lg"
+          size="sm"
           onClick={handlePrevious}
           disabled={currentQuestion === 0}
-          className="flex items-center gap-2 min-w-[120px]"
+          className="flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold"
         >
-          <ChevronLeft size={20} />
-          Назад
+          <ChevronLeft size={15} />
+          <span>Назад</span>
         </Button>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1.5">
           {questions.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentQuestion(index)}
               className={`
-                w-3 h-3 rounded-full transition-all duration-200
+                w-2.5 h-2.5 rounded-full transition-all duration-200
                 ${index === currentQuestion 
-                  ? 'bg-primary-600 w-8' 
+                  ? 'bg-primary-600 ring-2 ring-primary-400/50 scale-125' 
                   : answers[index] !== null 
-                    ? 'bg-green-500' 
+                    ? 'bg-emerald-500/80' 
                     : theme === 'dark' ? 'bg-white/20' : 'bg-slate-300'
                 }
               `}
-              aria-label={`Вопрос ${index + 1}`}
+              title={`Вопрос ${index + 1}`}
             />
           ))}
         </div>
 
         <Button
           variant="primary"
-          size="lg"
+          size="sm"
           onClick={handleNext}
-          disabled={!allAnswered && selectedAnswer === null}
-          className="flex items-center gap-2 min-w-[120px]"
+          className="flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold"
         >
-          {isLastQuestion ? 'Завершить' : 'Дальше'}
-          <ChevronRight size={20} />
+          <span>{isLastQuestion ? 'Завершить' : 'Далее'}</span>
+          <ChevronRight size={15} />
         </Button>
       </div>
     </div>
   )
 }
-

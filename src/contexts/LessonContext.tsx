@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { LessonTopic } from '@/types'
 
 interface LessonContextType {
@@ -10,10 +10,29 @@ interface LessonContextType {
   updateTopic: (topicId: string, updates: Partial<LessonTopic>) => void
 }
 
+const STORAGE_KEY = 'physics_selected_topics'
+
+function loadInitialTopics(): LessonTopic[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch {}
+  return []
+}
+
 const LessonContext = createContext<LessonContextType | undefined>(undefined)
 
 export function LessonProvider({ children }: { children: ReactNode }) {
-  const [selectedTopics, setSelectedTopics] = useState<LessonTopic[]>([])
+  const [selectedTopics, setSelectedTopics] = useState<LessonTopic[]>(loadInitialTopics)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedTopics))
+    } catch {}
+  }, [selectedTopics])
 
   const addTopic = (topic: LessonTopic) => {
     setSelectedTopics(prev => {

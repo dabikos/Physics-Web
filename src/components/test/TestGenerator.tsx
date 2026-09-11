@@ -29,48 +29,48 @@ export function TestGenerator({ topicTitle, onGenerate, isGenerating, error }: T
   }
 
   return (
-    <Card className={`${bgCard} ${borderColor} p-8 max-w-2xl mx-auto`}>
-      <div className="text-center mb-6">
-        <h3 className={`text-2xl font-bold ${textColor} mb-2`}>Генерация теста</h3>
-        <p className={textMuted}>Тема: {topicTitle}</p>
+    <Card className={`${bgCard} ${borderColor} p-5 sm:p-6 max-w-xl mx-auto rounded-2xl shadow-lg`}>
+      <div className="text-center mb-5">
+        <h3 className={`text-xl font-bold ${textColor} mb-1`}>Параметры теста</h3>
+        <p className={`text-xs ${textMuted}`}>Тема: {topicTitle}</p>
       </div>
 
       {/* Количество вопросов */}
-      <div className="mb-6">
-        <label className={`block text-sm font-semibold ${textColor} mb-3`}>
+      <div className="mb-4">
+        <label className={`block text-xs font-semibold ${textColor} mb-2`}>
           Количество вопросов:
         </label>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           {([5, 10, 15] as const).map(count => (
             <button
               key={count}
               onClick={() => setQuestionCount(count)}
               disabled={isGenerating}
               className={`
-                flex-1 py-3 px-4 rounded-xl font-medium transition-all duration-200
+                flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-200
                 ${questionCount === count ? buttonActive : buttonInactive}
                 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              {count}
+              {count} вопросов
             </button>
           ))}
         </div>
       </div>
 
       {/* Сложность */}
-      <div className="mb-6">
-        <label className={`block text-sm font-semibold ${textColor} mb-3`}>
+      <div className="mb-5">
+        <label className={`block text-xs font-semibold ${textColor} mb-2`}>
           Сложность:
         </label>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           {(['easy', 'medium', 'hard'] as const).map(diff => (
             <button
               key={diff}
               onClick={() => setDifficulty(diff)}
               disabled={isGenerating}
               className={`
-                flex-1 py-3 px-4 rounded-xl font-medium transition-all duration-200 capitalize
+                flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-200 capitalize
                 ${difficulty === diff ? buttonActive : buttonInactive}
                 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}
               `}
@@ -84,26 +84,26 @@ export function TestGenerator({ topicTitle, onGenerate, isGenerating, error }: T
       {/* Кнопка генерации */}
       <Button
         variant="primary"
-        size="lg"
+        size="md"
         onClick={handleGenerate}
         disabled={isGenerating}
-        className="w-full flex items-center justify-center gap-2"
+        className="w-full flex items-center justify-center gap-2 h-10 text-xs sm:text-sm font-semibold shadow-md shadow-rose-500/20"
       >
         {isGenerating ? (
           <>
-            <Loader2 size={20} className="animate-spin" />
-            Генерация теста...
+            <Loader2 size={16} className="animate-spin" />
+            <span>Генерация теста...</span>
           </>
         ) : (
           <>
-            <Sparkles size={20} />
-            Сгенерировать тест
+            <Sparkles size={16} />
+            <span>Сгенерировать тест</span>
           </>
         )}
       </Button>
 
       {error && (
-        <div className={`mt-4 p-4 rounded-lg ${theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'}`}>
+        <div className={`mt-3 p-3 rounded-xl text-xs ${theme === 'dark' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-red-50 text-red-700 border border-red-200'}`}>
           {error}
         </div>
       )}
