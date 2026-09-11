@@ -229,7 +229,7 @@ export function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen px-6 pb-6 pt-24 lg:px-8 lg:pb-8 lg:pt-28">
+    <div className="min-h-screen px-6 pb-6 pt-20 lg:px-8 lg:pb-8 lg:pt-24">
       <div className="max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="mb-10">

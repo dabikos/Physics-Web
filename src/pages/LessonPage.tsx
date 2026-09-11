@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle } from 'lucide-react'
+import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -34,12 +34,12 @@ import { InteractiveTaskCard } from '@/components/tasks/InteractiveTaskCard'
 type DemoState = 'idle' | 'theory' | 'problems' | 'simulations' | 'formulas' | 'test' | 'ai-explain'
 
 const controlButtons = [
-  { id: 'theory' as DemoState, label: 'Теория', icon: <BookOpen size={32} />, color: 'from-blue-500 to-cyan-500' },
-  { id: 'problems' as DemoState, label: 'Задачи', icon: <Puzzle size={32} />, color: 'from-orange-500 to-amber-500' },
-  { id: 'simulations' as DemoState, label: 'Симуляции', icon: <Cpu size={32} />, color: 'from-purple-500 to-pink-500' },
-  { id: 'formulas' as DemoState, label: 'Формулы', icon: <FunctionSquare size={32} />, color: 'from-emerald-500 to-teal-500' },
-  { id: 'test' as DemoState, label: 'Тест', icon: <ClipboardCheck size={32} />, color: 'from-rose-500 to-red-500' },
-  { id: 'ai-explain' as DemoState, label: 'AI объясни', icon: <Sparkles size={32} />, color: 'from-violet-500 to-purple-500', accent: true },
+  { id: 'theory' as DemoState, label: 'Теория', icon: <BookOpen size={18} />, color: 'from-blue-500 to-cyan-500' },
+  { id: 'problems' as DemoState, label: 'Задачи', icon: <Puzzle size={18} />, color: 'from-orange-500 to-amber-500' },
+  { id: 'simulations' as DemoState, label: 'Симуляции', icon: <Cpu size={18} />, color: 'from-purple-500 to-pink-500' },
+  { id: 'formulas' as DemoState, label: 'Формулы', icon: <FunctionSquare size={18} />, color: 'from-emerald-500 to-teal-500' },
+  { id: 'test' as DemoState, label: 'Тест', icon: <ClipboardCheck size={18} />, color: 'from-rose-500 to-red-500' },
+  { id: 'ai-explain' as DemoState, label: 'AI объясни', icon: <Sparkles size={18} />, color: 'from-violet-500 to-purple-500', accent: true },
 ]
 
 import { API_BASE } from '@/lib/api'
@@ -95,6 +95,25 @@ export function LessonPage() {
   const { selectedTopics, removeTopic, updateTopic, addTopic, clearTopics } = useLesson()
   const [activeState, setActiveState] = useState<DemoState>('idle')
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('teacher_sidebar_collapsed') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev
+      try {
+        localStorage.setItem('teacher_sidebar_collapsed', String(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
 const [selectedSimulationId, setSelectedSimulationId] = useState<SimulationId | null>(null)
 const [simulationParams, setSimulationParams] = useState({
   'uniform-acceleration': { v0: 2, accel: 1, timeScale: 1 },
@@ -1659,344 +1678,391 @@ const [simulationParams, setSimulationParams] = useState({
   }
 
   return (
-    <div className="pt-20 min-h-screen">
-      <div className="flex h-[calc(100vh-5rem)] relative">
+    <div className="pt-16 min-h-screen">
+      <div className="flex h-[calc(100vh-4rem)] relative overflow-hidden">
         {/* Left Panel - Teacher Control */}
-        <aside className={`w-80 lg:w-96 ${sidebarBg} border-r ${borderColor} p-6 flex flex-col overflow-y-auto`}>
-          <div className="mb-6">
-            <h2 className={`text-2xl font-bold ${textColor} mb-2`}>Пульт учителя</h2>
-            <p className={`${textMuted} text-sm`}>Выберите раздел урока</p>
-          </div>
-
-          {/* Selected Topics */}
-          {selectedTopics.length > 0 && (
-            <Card className={`mb-4 p-4 ${bgCard} ${borderColor}`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className={`${textMuted60} text-sm font-semibold`}>Выбранные темы</span>
-                <span className={`${textMuted60} text-xs`}>{selectedTopics.length}</span>
-              </div>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
-                {selectedTopics.map(topic => (
-                  <div
-                    key={topic.id}
-                    className={`flex items-center justify-between p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}
-                  >
-                    <span className={`${textColor} text-sm truncate flex-1`}>{topic.title}</span>
-                    <button
-                      onClick={() => removeTopic(topic.id)}
-                      className={`${textMuted} hover:${textColor} transition-colors`}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Lesson Templates */}
-          <Card className={`mb-4 p-4 ${bgCard} ${borderColor}`}>
-            <div className="flex items-center justify-between mb-3">
-              <span className={`${textMuted60} text-sm font-semibold`}>Мои уроки</span>
-              <span className={`${textMuted60} text-xs`}>{lessonTemplates.length}</span>
+        {isSidebarCollapsed ? (
+          <aside className={`w-[68px] min-w-[68px] ${sidebarBg} border-r ${borderColor} py-4 px-2 flex flex-col items-center justify-between transition-all duration-300 z-20 shrink-0`}>
+            <div className="flex flex-col items-center w-full">
+              <button
+                onClick={toggleSidebar}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                  theme === 'dark' ? 'hover:bg-white/10 text-slate-400 hover:text-white' : 'hover:bg-slate-200 text-slate-600'
+                }`}
+                title="Развернуть пульт учителя"
+              >
+                <PanelLeftOpen size={18} />
+              </button>
+              <div className={`w-8 h-px my-3 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
             </div>
-            {lessonsLoading && (
-              <div className={`${textMuted} text-sm`}>Загрузка...</div>
-            )}
-            {!lessonsLoading && lessonTemplates.length === 0 && (
-              <div className={`${textMuted} text-sm`}>Пока нет сохранённых уроков</div>
-            )}
-            {lessonsError && (
-              <div className="text-rose-500 text-sm">{lessonsError}</div>
-            )}
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {lessonTemplates.map((lesson) => (
-                <div key={lesson.id} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}>
-                  <div className="flex items-start justify-between gap-2">
+
+            {/* Compact Control Icons */}
+            <div className="flex flex-col items-center gap-2.5 w-full my-auto">
+              {controlButtons.map((btn) => {
+                const isActive = activeState === btn.id
+                return (
+                  <div key={btn.id} className="relative group flex items-center justify-center">
                     <button
-                      onClick={() => handleApplyTemplate(lesson)}
-                      className={`text-left ${textColor} text-sm font-medium flex-1`}
+                      onClick={() => setActiveState(btn.id)}
+                      aria-label={btn.label}
+                      className={`
+                        w-10 h-10 rounded-xl flex items-center justify-center
+                        transition-all duration-200
+                        ${isActive
+                          ? 'bg-gradient-to-br ' + btn.color + ' text-white shadow-md shadow-primary-500/20 ring-2 ring-primary-400/50 scale-105'
+                          : buttonInactive
+                        }
+                      `}
                     >
-                      {lesson.title}
+                      {btn.icon}
                     </button>
-                    <button
-                      onClick={() => handleDeleteTemplate(lesson.id)}
-                      className={`${textMuted} hover:${textColor} transition-colors`}
-                      aria-label="Удалить урок"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {/* Tooltip on hover */}
+                    <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl border border-white/10">
+                      {btn.label}
+                    </div>
                   </div>
-                  <div className={`${textMuted} text-xs mt-1`}>
-                    {lesson.lesson_topic} • {lesson.class_name}
+                )
+              })}
+            </div>
+
+            {/* Bottom Collapsed Actions */}
+            <div className="flex flex-col items-center gap-2 w-full pt-2">
+              <div className={`w-8 h-px mb-1 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
+              <div className="relative group">
+                <button
+                  onClick={handleFinishLesson}
+                  aria-label="Завершить урок"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition-colors border border-rose-500/20"
+                >
+                  <Play size={16} />
+                </button>
+                <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl border border-white/10">
+                  Завершить урок
+                </div>
+              </div>
+            </div>
+          </aside>
+        ) : (
+          <aside className={`w-72 lg:w-80 min-w-[280px] max-w-[320px] ${sidebarBg} border-r ${borderColor} p-4 flex flex-col justify-between overflow-y-auto transition-all duration-300 z-20 shrink-0`}>
+            <div>
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400">
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <h2 className={`text-sm font-semibold ${textColor} leading-tight`}>Пульт учителя</h2>
+                    <p className={`${textMuted} text-[11px]`}>Разделы и сценарии урока</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Control Buttons */}
-          <div className="flex-1 space-y-3">
-            {controlButtons.map((btn) => {
-              const isActive = activeState === btn.id
-              return (
-                <motion.button
-                  key={btn.id}
-                  onClick={() => setActiveState(btn.id)}
-                  className={`
-                    w-full h-20 rounded-xl flex items-center gap-4 px-4 text-left
-                    transition-all duration-200 relative overflow-hidden
-                    ${isActive
-                      ? 'bg-gradient-to-r ' + btn.color + ' text-white shadow-lg scale-[1.02]'
-                      : buttonInactive
-                    }
-                  `}
-                  whileHover={{ scale: isActive ? 1.02 : 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
+                  onClick={toggleSidebar}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    theme === 'dark' ? 'hover:bg-white/10 text-slate-400 hover:text-white' : 'hover:bg-slate-200 text-slate-600'
+                  }`}
+                  title="Свернуть пульт учителя"
                 >
-                  <div className={`
-                    p-3 rounded-xl transition-all duration-200
-                    ${isActive ? 'bg-white/20' : 'bg-white/10'}
-                  `}>
-                    {btn.icon}
+                  <PanelLeftClose size={18} />
+                </button>
+              </div>
+
+              {/* Selected Topics */}
+              {selectedTopics.length > 0 && (
+                <Card className={`mb-3 p-3 ${bgCard} ${borderColor}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`${textMuted60} text-xs font-semibold uppercase tracking-wider`}>Выбранные темы</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-primary-500/20 text-primary-300 font-bold">{selectedTopics.length}</span>
                   </div>
-                  <span className="text-xl font-medium">{btn.label}</span>
-                  {isActive && (
-                    <motion.div
-                      className="absolute right-4"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.1 }}
+                  <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                    {selectedTopics.map(topic => (
+                      <div
+                        key={topic.id}
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}
+                      >
+                        <span className={`${textColor} truncate flex-1 font-medium`}>{topic.title}</span>
+                        <button
+                          onClick={() => removeTopic(topic.id)}
+                          className={`${textMuted} hover:${textColor} ml-1 transition-colors`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Lesson Templates */}
+              <Card className={`mb-3 p-3 ${bgCard} ${borderColor}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`${textMuted60} text-xs font-semibold uppercase tracking-wider`}>Мои уроки</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/10 text-slate-400 font-bold">{lessonTemplates.length}</span>
+                </div>
+                {lessonsLoading && (
+                  <div className={`${textMuted} text-xs py-1`}>Загрузка...</div>
+                )}
+                {!lessonsLoading && lessonTemplates.length === 0 && (
+                  <div className={`${textMuted} text-xs py-1`}>Пока нет сохранённых уроков</div>
+                )}
+                {lessonsError && (
+                  <div className="text-rose-400 text-xs py-1">{lessonsError}</div>
+                )}
+                <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+                  {lessonTemplates.map((lesson) => (
+                    <div key={lesson.id} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} text-xs`}>
+                      <div className="flex items-start justify-between gap-1">
+                        <button
+                          onClick={() => handleApplyTemplate(lesson)}
+                          className={`text-left ${textColor} font-medium truncate flex-1 hover:underline`}
+                        >
+                          {lesson.title}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTemplate(lesson.id)}
+                          className={`${textMuted} hover:${textColor} transition-colors shrink-0`}
+                          aria-label="Удалить урок"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      <div className={`${textMuted} text-[10px] mt-0.5 truncate`}>
+                        {lesson.lesson_topic} • {lesson.class_name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Control Buttons */}
+              <div className="space-y-2 mb-4">
+                {controlButtons.map((btn) => {
+                  const isActive = activeState === btn.id
+                  return (
+                    <button
+                      key={btn.id}
+                      onClick={() => setActiveState(btn.id)}
+                      className={`
+                        w-full h-11 rounded-xl flex items-center gap-3 px-3 text-left
+                        transition-all duration-200 relative overflow-hidden text-sm font-medium
+                        ${isActive
+                          ? 'bg-gradient-to-r ' + btn.color + ' text-white shadow-md shadow-primary-500/20 scale-[1.01]'
+                          : buttonInactive
+                        }
+                      `}
                     >
-                      <CheckCircle2 size={20} className="text-white/80" />
-                    </motion.div>
-                  )}
-                </motion.button>
-              )
-            })}
-          </div>
-
-          {/* Lesson Info */}
-          <Card className={`mt-6 p-4 ${bgCard} ${borderColor}`}>
-            <div className="flex items-center justify-between mb-3">
-              <span className={`${textMuted60} text-sm`}>Тема урока</span>
-              <button
-                onClick={() => navigate('/library')}
-                className="text-primary-400 text-sm font-medium cursor-pointer hover:text-primary-300 transition-colors"
-              >
-                Изменить
-              </button>
+                      <div className={`
+                        w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200
+                        ${isActive ? 'bg-white/20' : 'bg-white/10'}
+                      `}>
+                        {btn.icon}
+                      </div>
+                      <span className="flex-1 truncate">{btn.label}</span>
+                      {isActive && (
+                        <CheckCircle2 size={16} className="text-white/90 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <p className={`${textColor} font-medium`}>
-              {selectedTopics.length > 0 ? selectedTopics.map(t => t.title).join(', ') : 'Введение в механику'}
-            </p>
-          </Card>
 
-          {/* Finish Lesson Button */}
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full mt-4"
-            onClick={handleFinishLesson}
-          >
-            <Play size={20} className="mr-2" />
-            Завершить урок
-          </Button>
-        </aside>
+            {/* Bottom Section */}
+            <div className="pt-3 mt-auto border-t border-white/5 space-y-2.5">
+              <div className={`p-2.5 rounded-xl ${bgCard} border ${borderColor} text-xs`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`${textMuted60} text-[11px]`}>Текущая тема:</span>
+                  <button
+                    onClick={() => navigate('/library')}
+                    className="text-primary-400 hover:text-primary-300 font-medium text-[11px] transition-colors"
+                  >
+                    Изменить
+                  </button>
+                </div>
+                <p className={`${textColor} font-semibold truncate`}>
+                  {selectedTopics.length > 0 ? selectedTopics.map(t => t.title).join(', ') : 'Введение в механику'}
+                </p>
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full h-10 text-xs font-semibold shadow-lg shadow-primary-500/20"
+                onClick={handleFinishLesson}
+              >
+                <Play size={15} className="mr-1.5" />
+                Завершить урок
+              </Button>
+            </div>
+          </aside>
+        )}
 
         {/* Right Zone - Demonstration Screen */}
-        <main ref={demoScreenRef} className="flex-1 p-8 flex items-start justify-center overflow-y-auto relative">
-          {/* Панель управления зумом */}
+        <main ref={demoScreenRef} className="flex-1 p-4 lg:p-6 flex items-start justify-center overflow-y-auto relative">
+          {/* Top Floating Glass Toolbar */}
           <div className={`
-            absolute top-4 left-4 z-50
-            flex items-center gap-3 px-4 py-2 rounded-xl
+            absolute top-3 right-4 z-30
+            flex items-center gap-1.5 p-1.5 rounded-2xl
             ${theme === 'dark'
-              ? 'bg-white/10 border border-white/20 backdrop-blur-sm'
-              : 'bg-white/90 border border-slate-300 backdrop-blur-sm'
+              ? 'bg-slate-900/80 border border-white/10 backdrop-blur-md text-slate-200'
+              : 'bg-white/90 border border-slate-200 backdrop-blur-md text-slate-700'
             }
-            shadow-lg
+            shadow-xl shadow-black/20
           `}>
-            <button
-              onClick={handleZoomOut}
-              className={`
-                w-8 h-8 rounded-lg flex items-center justify-center
-                transition-all duration-200
-                ${theme === 'dark'
-                  ? 'hover:bg-white/20 text-white'
-                  : 'hover:bg-slate-200 text-slate-700'
-                }
-              `}
-              title="Уменьшить (Ctrl + -)"
-            >
-              <ZoomOut size={18} />
-            </button>
-
-            <div className="w-32">
-              <Slider
-                min={50}
-                max={200}
-                value={zoomLevel}
-                onChange={handleZoomChange}
-                className={theme === 'dark' ? 'bg-white/20' : 'bg-slate-200'}
-              />
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleZoomOut}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                  theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                }`}
+                title="Уменьшить масштаб"
+              >
+                <ZoomOut size={15} />
+              </button>
+              <button
+                onClick={handleZoomReset}
+                className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
+                  theme === 'dark' ? 'hover:bg-white/10 text-slate-200 bg-white/5' : 'hover:bg-slate-200 text-slate-700 bg-slate-100'
+                }`}
+                title="Сбросить на 100%"
+              >
+                {zoomLevel}%
+              </button>
+              <button
+                onClick={handleZoomIn}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                  theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                }`}
+                title="Увеличить масштаб"
+              >
+                <ZoomIn size={15} />
+              </button>
             </div>
 
+            <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
+
+            {/* Class Panel Button */}
             <button
-              onClick={handleZoomIn}
-              className={`
-                w-8 h-8 rounded-lg flex items-center justify-center
-                transition-all duration-200
-                ${theme === 'dark'
-                  ? 'hover:bg-white/20 text-white'
-                  : 'hover:bg-slate-200 text-slate-700'
-                }
-              `}
-              title="Увеличить (Ctrl + +)"
+              onClick={() => setIsClassPanelOpen(prev => !prev)}
+              className={`h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
+                isClassPanelOpen
+                  ? 'bg-primary-500 text-white shadow-sm'
+                  : theme === 'dark'
+                    ? 'hover:bg-white/10 text-slate-300'
+                    : 'hover:bg-slate-100 text-slate-700'
+              }`}
+              title={isClassPanelOpen ? 'Закрыть панель класса' : 'Открыть панель класса'}
             >
-              <ZoomIn size={18} />
+              <Users size={14} />
+              <span>Класс</span>
             </button>
 
-            <div className={`
-              min-w-[3rem] text-center text-sm font-medium
-              ${theme === 'dark' ? 'text-white' : 'text-slate-700'}
-            `}>
-              {zoomLevel}%
-            </div>
+            <div className={`w-px h-4 mx-0.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`} />
 
+            {/* Fullscreen Button */}
             <button
-              onClick={handleZoomReset}
-              className={`
-                w-8 h-8 rounded-lg flex items-center justify-center
-                transition-all duration-200
-                ${theme === 'dark'
-                  ? 'hover:bg-white/20 text-white'
-                  : 'hover:bg-slate-200 text-slate-700'
-                }
-              `}
-              title="Сбросить масштаб"
+              onClick={toggleFullscreen}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                theme === 'dark' ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+              }`}
+              title={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
             >
-              <RotateCcw size={18} />
+              {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </button>
           </div>
-
-          {/* Кнопка панели класса */}
-          <button
-            onClick={() => setIsClassPanelOpen(prev => !prev)}
-            className={`
-              absolute top-4 right-20 z-50
-              w-12 h-12 rounded-xl flex items-center justify-center
-              transition-all duration-200
-              ${theme === 'dark'
-                ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
-              }
-              shadow-lg hover:shadow-xl
-            `}
-            aria-label={isClassPanelOpen ? 'Закрыть панель класса' : 'Открыть панель класса'}
-            title={isClassPanelOpen ? 'Закрыть панель класса' : 'Открыть панель класса'}
-          >
-            <Users size={20} />
-          </button>
-
-          {/* Кнопка полноэкранного режима */}
-          <button
-            onClick={toggleFullscreen}
-            className={`
-              absolute top-4 right-4 z-50
-              w-12 h-12 rounded-xl flex items-center justify-center
-              transition-all duration-200
-              ${theme === 'dark'
-                ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
-              }
-              shadow-lg hover:shadow-xl
-            `}
-            aria-label={isFullscreen ? 'Выйти из полноэкранного режима' : 'Полноэкранный режим'}
-            title={isFullscreen ? 'Выйти из полноэкранного режима (F11)' : 'Полноэкранный режим (F11)'}
-          >
-            {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-          </button>
 
           <div
             ref={contentRef}
             className="w-full flex justify-center transition-transform duration-300 origin-top"
             style={{ transform: `scale(${zoomLevel / 100})` }}
           >
-            <Card className={`w-full flex flex-col items-center justify-start p-12 border-2 border-dashed ${theme === 'dark' ? 'border-white/20 bg-gradient-to-br from-white/[0.02] to-white/[0.05]' : 'border-slate-300 bg-gradient-to-br from-slate-50 to-white'} relative overflow-hidden ${bgCard} ${borderColor}`}>
+            <Card className={`w-full max-w-5xl flex flex-col items-center justify-start p-6 lg:p-8 rounded-3xl border ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-white/90'} backdrop-blur-md shadow-2xl relative overflow-hidden min-h-[560px]`}>
               {/* Background decoration */}
-              <div className="absolute inset-0 opacity-30">
-                <div className="absolute top-0 left-0 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+              <div className="absolute inset-0 opacity-30 pointer-events-none">
+                <div className="absolute top-0 left-0 w-96 h-96 bg-primary-500/15 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent-500/15 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
               </div>
 
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeState + selectedTopicId}
                   className="relative z-10 w-full"
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
                 >
                   {activeState === 'idle' ? (
-                    <>
-                      {/* Icon */}
+                    <div className="py-12 flex flex-col items-center text-center max-w-xl mx-auto">
                       <motion.div
-                        className={`w-32 h-32 mx-auto mb-8 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200'} flex items-center justify-center`}
+                        className={`w-20 h-20 mx-auto mb-6 rounded-3xl ${theme === 'dark' ? 'bg-primary-500/10 border border-primary-500/20 text-primary-400' : 'bg-primary-50 border border-primary-100 text-primary-600'} flex items-center justify-center shadow-lg shadow-primary-500/10`}
                         initial={{ scale: 0.8, rotate: -5 }}
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
                       >
-                        {content.icon}
+                        <BookOpen size={36} />
                       </motion.div>
 
-                      {/* Title */}
                       <motion.h1
-                        className={`text-4xl lg:text-5xl font-bold ${textColor} mb-4 text-center`}
+                        className={`text-3xl lg:text-4xl font-extrabold ${textColor} mb-3`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.15 }}
+                      >
+                        Интерактивная доска
+                      </motion.h1>
+
+                      <motion.p
+                        className={`text-base ${textMuted} mb-8 leading-relaxed max-w-md`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
                       >
-                        {content.title}
-                      </motion.h1>
-
-                      {/* Description */}
-                      <motion.p
-                        className={`text-xl ${textMuted} max-w-lg mx-auto mb-8 text-center`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        {content.description}
+                        Выберите раздел в пульте учителя слева для показа теории, интерактивных симуляций, решения задач или проведения тестирования.
                       </motion.p>
 
-                      {/* Hint */}
-                      {activeState !== 'idle' && (
-                        <motion.div
-                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200'} ${textMuted60} text-sm mx-auto`}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.4 }}
+                      {/* Quick launch shortcuts */}
+                      <div className="grid grid-cols-3 gap-3 w-full">
+                        <button
+                          onClick={() => setActiveState('theory')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                            theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                          }`}
                         >
-                          {content.hint}
-                        </motion.div>
-                      )}
-
-                      {/* Active indicator */}
-                      {activeState !== 'idle' && activeButton && (
-                        <motion.div
-                          className="mt-12 text-center"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.5 }}
-                        >
-                          <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl ${theme === 'dark' ? 'bg-gradient-to-r from-white/10 to-white/5 border border-white/10' : 'bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200'}`}>
-                            <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${activeButton.color} animate-pulse`} />
-                            <span className={textMuted70}>Демонстрация активна</span>
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
+                            <BookOpen size={16} />
                           </div>
-                        </motion.div>
-                      )}
-                    </>
+                          <div className={`text-xs font-semibold ${textColor}`}>Теория</div>
+                          <div className={`text-[11px] ${textMuted}`}>Интерактивные слайды</div>
+                        </button>
+
+                        <button
+                          onClick={() => setActiveState('simulations')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                            theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center mb-2">
+                            <Cpu size={16} />
+                          </div>
+                          <div className={`text-xs font-semibold ${textColor}`}>Симуляции</div>
+                          <div className={`text-[11px] ${textMuted}`}>Лабораторные опыты</div>
+                        </button>
+
+                        <button
+                          onClick={() => setActiveState('test')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                            theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center mb-2">
+                            <ClipboardCheck size={16} />
+                          </div>
+                          <div className={`text-xs font-semibold ${textColor}`}>Экспресс-тест</div>
+                          <div className={`text-[11px] ${textMuted}`}>Проверка знаний</div>
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     renderContent()
                   )}

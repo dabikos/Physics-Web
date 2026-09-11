@@ -78,7 +78,7 @@ export function SettingsPage() {
     .toUpperCase()
 
   return (
-    <div className="min-h-screen px-6 pb-6 pt-24 lg:px-8 lg:pb-8 lg:pt-28">
+    <div className="min-h-screen px-6 pb-6 pt-20 lg:px-8 lg:pb-8 lg:pt-24">
       <div className="max-w-[1200px] mx-auto">
         <div className="mb-10">
           <h1 className={`text-4xl lg:text-5xl font-bold ${textColor} mb-3`}>

@@ -305,7 +305,7 @@ export function WorksheetPage() {
 
   /* ── render ── */
   return (
-    <div className="pt-28 pb-16 px-6 max-w-5xl mx-auto">
+    <div className="pt-20 pb-16 px-6 max-w-5xl mx-auto">
       {/* ═══ LIST VIEW ═══ */}
       {view === 'list' && (
         <div className="space-y-6">

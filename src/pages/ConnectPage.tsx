@@ -173,7 +173,7 @@ export function ConnectPage() {
   }, [session?.code])
 
   return (
-    <div className={`min-h-screen pt-28 pb-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300 ${
+    <div className={`min-h-screen pt-20 pb-16 px-4 sm:px-6 lg:px-8 transition-colors duration-300 ${
       isDark ? 'text-white' : 'text-slate-900'
     }`}>
       <div className="max-w-7xl mx-auto space-y-8">
