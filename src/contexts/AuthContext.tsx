@@ -1,20 +1,25 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
 
-interface UserData {
+export interface UserData {
   id: string
   email: string
   name: string
   role: 'student' | 'teacher' | 'admin'
   class_id?: string | null
+  subject?: string | null
+  school?: string | null
+  classroom?: string | null
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: UserData | null
   token: string | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
   signOut: () => void
+  updateProfile: (data: Partial<Pick<UserData, 'name' | 'subject' | 'school' | 'classroom' | 'class_id'>>) => Promise<{ success: boolean; error?: string }>
+  changePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
   isAdmin: boolean
 }
 
@@ -119,6 +124,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const updateProfile = async (updates: Partial<Pick<UserData, 'name' | 'subject' | 'school' | 'classroom' | 'class_id'>>) => {
+    if (!user) return { success: false, error: 'Пользователь не авторизован' }
+
+    const updatedUser: UserData = { ...user, ...updates }
+    setUser(updatedUser)
+    localStorage.setItem(USER_KEY, JSON.stringify(updatedUser))
+
+    try {
+      if (token) {
+        await fetch(`${API_BASE}/api/auth/profile`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updates),
+        })
+      }
+      return { success: true }
+    } catch (err) {
+      console.warn('Backend profile sync failed, saved locally:', err)
+      return { success: true }
+    }
+  }
+
+  const changePassword = async (oldPassword: string, newPassword: string) => {
+    if (!user || !token) return { success: false, error: 'Пользователь не авторизован' }
+    if (newPassword.length < 6) return { success: false, error: 'Новый пароль должен содержать не менее 6 символов' }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        return { success: false, error: formatDetailError(data?.detail, 'Не удалось сменить пароль') }
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('Change password error:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Ошибка сети при смене пароля' }
+    }
+  }
+
   const signOut = () => {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
@@ -127,7 +182,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const isAdmin = isAdminUser(user)
-  const value = useMemo(() => ({ user, token, loading, signIn, signUp, signOut, isAdmin }), [user, token, loading, isAdmin])
+  const value = useMemo(
+    () => ({ user, token, loading, signIn, signUp, signOut, updateProfile, changePassword, isAdmin }),
+    [user, token, loading, isAdmin]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
