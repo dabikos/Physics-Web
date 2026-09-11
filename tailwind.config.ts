@@ -5,9 +5,18 @@ const config: Config = {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        cosmic: {
+          950: '#060913',
+          900: '#0B0F19',
+          850: '#0E1424',
+          800: '#10172F',
+          700: '#1A233D',
+          600: '#253256',
+        },
         primary: {
           50: '#eef2ff',
           100: '#e0e7ff',
@@ -33,6 +42,18 @@ const config: Config = {
           800: '#5b21b6',
           900: '#4c1d95',
         },
+        neon: {
+          cyan: '#06B6D4',
+          emerald: '#10B981',
+          violet: '#8B5CF6',
+          amber: '#F59E0B',
+        },
+      },
+      boxShadow: {
+        'glow-primary': '0 0 25px -3px rgba(99, 102, 241, 0.45)',
+        'glow-cyan': '0 0 25px -3px rgba(6, 182, 212, 0.45)',
+        'glow-emerald': '0 0 25px -3px rgba(16, 185, 129, 0.45)',
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -83,12 +83,12 @@ export function LibraryPage() {
   const [isCreatingLesson, setIsCreatingLesson] = useState(false)
 
   const textColor = theme === 'dark' ? 'text-white' : 'text-slate-900'
-  const textMuted = theme === 'dark' ? 'text-white/50' : 'text-slate-600'
-  const textMuted40 = theme === 'dark' ? 'text-white/40' : 'text-slate-500'
-  const bgCard = theme === 'dark' ? 'bg-white/5' : 'bg-white/80'
-  const borderColor = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
-  const modalBackdrop = theme === 'dark' ? 'bg-slate-950/70' : 'bg-slate-900/40'
-  const inputBg = theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
+  const textMuted = theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
+  const textMuted40 = theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
+  const bgCard = theme === 'dark' ? 'quantum-card' : 'bg-white shadow-md border-slate-200'
+  const borderColor = theme === 'dark' ? 'border-white/[0.08]' : 'border-slate-200'
+  const modalBackdrop = theme === 'dark' ? 'bg-cosmic-950/80 backdrop-blur-md' : 'bg-slate-900/50 backdrop-blur-sm'
+  const inputBg = theme === 'dark' ? 'bg-cosmic-900/90 border-white/10 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'
 
   // Обновление счетчиков выбранных тем
   useEffect(() => {

@@ -26,6 +26,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children
 }
 
+
 function App() {
   const { theme } = useTheme()
   const { user } = useAuth()
@@ -35,8 +36,8 @@ function App() {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       theme === 'dark'
-        ? 'bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900'
-        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100'
+        ? 'quantum-bg-dark quantum-grid-pattern text-slate-100'
+        : 'bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100 text-slate-900'
     }`}>
       {user && !hideHeader && <Header />}
       <Routes>
