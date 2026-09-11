@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, BookOpen, Sparkles, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, BookOpen, Sparkles, Loader2, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { useTheme } from '@/contexts/ThemeContext'
 import { generateTheory } from '@/lib/githubAI'
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer'
@@ -18,10 +17,18 @@ interface TheorySlidesProps {
   topicTitle: string
   topicDescription?: string
   topicId?: string
+  isFullscreen?: boolean
   onTheoryGenerated?: (newTheory: string, formulas?: string[]) => void
 }
 
-export function TheorySlides({ theory, topicTitle, topicDescription = '', topicId, onTheoryGenerated }: TheorySlidesProps) {
+export function TheorySlides({
+  theory,
+  topicTitle,
+  topicDescription = '',
+  topicId,
+  isFullscreen = false,
+  onTheoryGenerated,
+}: TheorySlidesProps) {
   const { theme } = useTheme()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -38,158 +45,117 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
     if (!displayTheory) return []
 
     let text = displayTheory.trim()
-    const parts: TheorySlide[] = []
-    const headings: Array<{ title: string; index: number }> = []
-    
-    // Список известных заголовков (новый формат промпта)
-    const knownHeadings = [
-      'Введение',
-      'Основные понятия',
-      'Законы и формулы',
-      'Примеры и задачи',
-      'Роль и применение в жизни',
-      'Заключение',
-      // Старые форматы для совместимости
-      'Введение в прямолинейное движение',
-      'Понятие перемещения',
-      'Скорость в прямолинейном движении',
-      'Роль времени в анализе движения',
-    ]
 
-    // Ищем известные заголовки в тексте
-    knownHeadings.forEach(heading => {
-      // Ищем заголовок с разными вариантами форматирования
-      const patterns = [
-        // Заголовок с ** (markdown bold)
-        new RegExp(`\\*\\*${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*`, 'm'),
-        // Заголовок с ## (markdown heading)
-        new RegExp(`##\\s*${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'),
-        // Заголовок на отдельной строке
-        new RegExp(`^${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'),
-        // Заголовок после переноса строки
-        new RegExp(`\\n${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'),
-      ]
-      
-      for (const pattern of patterns) {
-        const match = text.match(pattern)
-        if (match) {
-          const index = match.index !== undefined ? match.index : text.indexOf(heading)
-          if (index !== -1 && !headings.find(h => h.title === heading)) {
-            headings.push({ title: heading, index })
-            break
-          }
+    // Нормализация и очистка нежелательных артефактов
+    text = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\(в формате LaTeX\)/gi, '')
+      .replace(/\(в формате latex\)/gi, '')
+      .replace(/Newton's законы/gi, 'Законы Ньютона')
+
+    const lines = text.split('\n')
+    const sections: Array<{ title: string; lineIndex: number }> = []
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+
+      // 1. Markdown заголовки ## Заголовок или # Заголовок
+      const mdHeadingMatch = line.match(/^#{1,3}\s+(.+)$/)
+      if (mdHeadingMatch) {
+        let title = mdHeadingMatch[1].replace(/\*\*/g, '').trim()
+        title = title.replace(/^\d+[\.\)]\s*/, '').trim() // убираем "1. " или "2) "
+        if (title.length >= 2 && title.length < 80) {
+          sections.push({ title, lineIndex: i })
+          continue
         }
       }
-    })
 
-    // Если не нашли известные заголовки, ищем заголовки по паттерну
-    if (headings.length === 0) {
-      // Ищем markdown заголовки **текст** или ## текст
-      const markdownHeadings = text.match(/\*\*([^*]+)\*\*/g) || []
-      markdownHeadings.forEach(match => {
-        const title = match.replace(/\*\*/g, '').trim()
-        if (title && title.length < 100) {
-          const index = text.indexOf(match)
-          if (index !== -1 && !headings.find(h => h.title === title)) {
-            headings.push({ title, index })
-          }
+      // 2. Жирные заголовки на отдельной строке **Заголовок**
+      const boldHeadingMatch = line.match(/^\*\*(?:(?:\d+[\.\)]\s*)?([^*]+))\*\*$/)
+      if (boldHeadingMatch) {
+        let title = boldHeadingMatch[1].trim()
+        title = title.replace(/^\d+[\.\)]\s*/, '').trim()
+        if (title.length >= 2 && title.length < 80) {
+          sections.push({ title, lineIndex: i })
+          continue
         }
-      })
+      }
 
-      // Ищем обычные заголовки (строки, которые выглядят как заголовки)
-      if (headings.length === 0) {
-        const lines = text.split('\n')
-        
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim()
-          const nextLine = i < lines.length - 1 ? lines[i + 1].trim() : ''
-          
-          // Проверяем, что это может быть заголовок
-          if (
-            line &&
-            /^[А-ЯЁ]/.test(line) &&
-            !line.endsWith('.') &&
-            line.length < 100 &&
-            line.split(' ').length < 15 &&
-            (nextLine === '' || /^[А-ЯЁ]/.test(nextLine) || nextLine.length > 50)
-          ) {
-            const index = text.indexOf(line)
-            if (index !== -1 && !headings.find(h => h.title === line)) {
-              headings.push({ title: line, index })
-            }
-          }
+      // 3. Заголовки типа "ПЕРВЫЙ ЗАКОН НЬЮТОНА:"
+      const upperMatch = line.match(/^([А-ЯЁ\s\(\)]+):$/)
+      if (upperMatch && line.length < 60 && line.split(' ').length < 8) {
+        let title = upperMatch[1].trim()
+        if (title.length > 3) {
+          sections.push({ title, lineIndex: i })
+          continue
         }
       }
     }
 
-    // Сортируем заголовки по позиции в тексте
-    headings.sort((a, b) => a.index - b.index)
+    // Если секции найдены, формируем слайды
+    if (sections.length > 0) {
+      const parts: TheorySlide[] = []
 
-    // Удаляем дубликаты
-    const uniqueHeadings = headings.filter((h, index, self) => 
-      index === self.findIndex(t => t.title === h.title)
-    )
+      // Текст до первого заголовка (если есть)
+      if (sections[0].lineIndex > 0) {
+        const introText = lines.slice(0, sections[0].lineIndex).join('\n').trim()
+        if (introText.length > 30) {
+          parts.push({
+            title: 'Введение',
+            content: introText,
+          })
+        }
+      }
 
-    // Если заголовки не найдены, создаем один слайд со всем текстом
-    if (uniqueHeadings.length === 0) {
-      return [{
-        title: topicTitle,
-        content: text
-      }]
+      for (let s = 0; s < sections.length; s++) {
+        const sec = sections[s]
+        const nextSec = sections[s + 1]
+        const startLine = sec.lineIndex + 1
+        const endLine = nextSec ? nextSec.lineIndex : lines.length
+
+        let content = lines.slice(startLine, endLine).join('\n').trim()
+
+        // Очищаем повтор заголовка в начале текста слайда
+        content = content
+          .replace(new RegExp(`^#{1,3}\\s*${sec.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\n?`, 'i'), '')
+          .replace(new RegExp(`^\\*\\*${sec.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*\\s*\\n?`, 'i'), '')
+          .trim()
+
+        parts.push({
+          title: sec.title,
+          content: content || 'Содержание раздела...',
+        })
+      }
+
+      if (parts.length > 0) {
+        return parts
+      }
     }
 
-    // Создаем слайды на основе найденных заголовков
-    uniqueHeadings.forEach((heading, index) => {
-      const startIndex = heading.index
-      const endIndex = index < uniqueHeadings.length - 1 
-        ? uniqueHeadings[index + 1].index 
-        : text.length
-
-      // Извлекаем контент между заголовками
-      let content = text.substring(startIndex, endIndex)
-      
-      // Удаляем заголовок из начала контента (разные форматы)
-      if (content.startsWith(`**${heading.title}**`)) {
-        content = content.substring(heading.title.length + 4).trim()
-      } else if (content.startsWith(`## ${heading.title}`)) {
-        content = content.substring(heading.title.length + 3).trim()
-      } else if (content.startsWith(heading.title)) {
-        content = content.substring(heading.title.length).trim()
-      }
-      
-      // Удаляем markdown форматирование и лишние переносы строк
-      content = content
-        .replace(/^\*\*/g, '') // Убираем ** в начале
-        .replace(/\*\*$/g, '') // Убираем ** в конце
-        .replace(/^##\s*/g, '') // Убираем ## в начале
-        .replace(/^\n+/g, '') // Убираем переносы строк в начале
-        .trim()
-      
-      parts.push({
-        title: heading.title,
-        content: content || 'Содержание раздела...'
-      })
-    })
-
-    return parts.length > 0 ? parts : [{ title: topicTitle, content: text }]
+    return [{
+      title: topicTitle,
+      content: text,
+    }]
   }, [displayTheory, topicTitle])
 
-  // Генерация теории
+  // Генерация теории через ИИ
   const handleGenerate = async () => {
     setIsGenerating(true)
     setGenerationError(null)
-    
+
     try {
       const generatedTheory = await generateTheory(topicTitle, topicDescription)
       setDisplayTheory(generatedTheory)
-      
+
       // Извлекаем формулы из сгенерированной теории
       const extractedFormulas = extractFormulasFromTheory(generatedTheory)
-      
+
       if (onTheoryGenerated) {
         onTheoryGenerated(generatedTheory, extractedFormulas)
       }
-      setCurrentSlide(0) // Сбрасываем на первый слайд
+      setCurrentSlide(0)
     } catch (error: any) {
       console.error('Ошибка генерации теории:', error)
       setGenerationError(error.message || 'Не удалось сгенерировать теорию')
@@ -235,9 +201,8 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
   const textMuted50 = theme === 'dark' ? 'text-white/50' : 'text-slate-500'
   const bgCard = theme === 'dark' ? 'bg-white/5' : 'bg-white/80'
   const borderColor = theme === 'dark' ? 'border-white/10' : 'border-slate-200'
-  const buttonBg = theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-100 hover:bg-slate-200'
 
-  // Если нет теории, показываем компактный экран с кнопкой генерации
+  // Если нет теории, показываем интерактивный приветственный экран с кнопкой генерации
   if (slides.length === 0) {
     return (
       <div className="w-full mx-auto">
@@ -251,11 +216,11 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
           <div className={`w-14 h-14 rounded-2xl ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'} flex items-center justify-center mb-4`}>
             <BookOpen size={28} />
           </div>
-          
+
           <h3 className={`text-xl font-bold ${textColor} mb-1.5`}>
             {topicTitle}
           </h3>
-          
+
           {topicDescription && (
             <p className={`text-xs sm:text-sm ${textMuted} max-w-lg mb-6`}>
               {topicDescription}
@@ -263,7 +228,7 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
           )}
 
           <p className={`text-xs ${textMuted50} mb-6 max-w-md`}>
-            Теоретический материал для этой темы еще не сгенерирован. Нажмите кнопку ниже, чтобы ИИ составил структурированный интерактивный конспект с формулами и примерами.
+            Теоретический материал для этой темы еще не сгенерирован. Нажмите кнопку ниже, чтобы ИИ составил структурированный интерактивный конспект с цветными рамками и формулами.
           </p>
 
           <Button
@@ -292,23 +257,32 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
   return (
     <div className="w-full mx-auto space-y-3">
       {generationError && (
-        <div className={`p-2.5 rounded-xl text-xs text-center ${theme === 'dark' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-red-50 text-red-700'}`}>
-          {generationError}
+        <div className={`p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 ${theme === 'dark' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+          <div className="flex items-center gap-2">
+            <Info size={14} className="shrink-0" />
+            <span>{generationError}</span>
+          </div>
+          <button
+            onClick={() => setGenerationError(null)}
+            className="text-[10px] underline opacity-75 hover:opacity-100"
+          >
+            Закрыть
+          </button>
         </div>
       )}
 
       {/* Верхняя панель слайдера: Название, индикаторы и кнопка перегенерации */}
-      <div className={`rounded-2xl border ${borderColor} ${bgCard} p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md`}>
+      <div className={`rounded-2xl border ${borderColor} ${bgCard} p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md backdrop-blur-md`}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-            <BookOpen size={16} />
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
+            <BookOpen size={18} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className={`text-sm sm:text-base font-bold truncate ${textColor}`}>
+              <h3 className={`text-base sm:text-lg font-bold truncate ${textColor}`}>
                 {slides[currentSlide].title}
               </h3>
-              <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20">
+              <span className="shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20">
                 {currentSlide + 1} / {slides.length}
               </span>
             </div>
@@ -325,8 +299,8 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
                 className={`
                   transition-all duration-200 rounded-full
                   ${index === currentSlide
-                    ? 'w-6 h-1.5 bg-blue-500'
-                    : 'w-1.5 h-1.5 bg-slate-400/40 hover:bg-slate-400'
+                    ? 'w-7 h-2 bg-gradient-to-r from-blue-500 to-cyan-400 shadow-sm shadow-cyan-400/50'
+                    : 'w-2 h-2 bg-slate-400/30 hover:bg-slate-400/60'
                   }
                 `}
                 aria-label={`Слайд ${index + 1}`}
@@ -337,15 +311,15 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className={`h-7 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
-              theme === 'dark' 
-                ? 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-300' 
+            className={`h-8 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              theme === 'dark'
+                ? 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-300 hover:text-white'
                 : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-700'
-            } disabled:opacity-50`}
-            title="Перегенерировать теорию"
+            } disabled:opacity-50 shadow-sm`}
+            title="Перегенерировать теорию через ИИ"
           >
-            {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} className="text-blue-400" />}
-            <span className="hidden md:inline">Обновить</span>
+            {isGenerating ? <Loader2 size={13} className="animate-spin text-blue-400" /> : <Sparkles size={13} className="text-cyan-400" />}
+            <span className="hidden md:inline">{isGenerating ? 'Генерация...' : 'Обновить'}</span>
           </button>
         </div>
       </div>
@@ -355,34 +329,42 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}
-            initial={{ opacity: 0, x: 10 }}
+            initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
+            exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.2 }}
           >
-            <div className={`rounded-2xl border ${borderColor} ${bgCard} p-5 sm:p-7 shadow-md flex flex-col min-h-[280px] max-h-[62vh]`}>
+            <div
+              className={`rounded-2xl border ${borderColor} ${bgCard} p-5 sm:p-7 shadow-xl flex flex-col backdrop-blur-md transition-all ${
+                isFullscreen
+                  ? 'min-h-[480px] max-h-[78vh]'
+                  : 'min-h-[360px] max-h-[70vh]'
+              }`}
+            >
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                <MarkdownRenderer 
+                <MarkdownRenderer
                   content={slides[currentSlide].content}
-                  className="text-sm sm:text-base md:text-lg leading-relaxed"
+                  className={`${isFullscreen ? 'text-base sm:text-lg' : 'text-sm sm:text-base'} leading-relaxed`}
                 />
               </div>
 
-              {/* Навигация слайда */}
-              <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/5">
+              {/* Нижняя навигация слайда */}
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={prevSlide}
                   disabled={currentSlide === 0}
-                  className="flex items-center gap-1.5 text-xs h-8 px-3"
+                  className={`flex items-center gap-1.5 font-medium transition-all ${
+                    isFullscreen ? 'h-9 px-4 text-xs' : 'h-8 px-3 text-xs'
+                  }`}
                 >
-                  <ChevronLeft size={15} />
+                  <ChevronLeft size={16} />
                   <span>Назад</span>
                 </Button>
 
                 <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span className="hidden sm:inline">Клавиши: [←] [→]</span>
+                  <span className="hidden sm:inline opacity-70">Клавиши: [←] [→]</span>
                 </div>
 
                 <Button
@@ -390,10 +372,12 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
                   size="sm"
                   onClick={nextSlide}
                   disabled={currentSlide === slides.length - 1}
-                  className="flex items-center gap-1.5 text-xs h-8 px-3"
+                  className={`flex items-center gap-1.5 font-medium shadow-md shadow-blue-500/20 transition-all ${
+                    isFullscreen ? 'h-9 px-4 text-xs' : 'h-8 px-3 text-xs'
+                  }`}
                 >
                   <span>Вперед</span>
-                  <ChevronRight size={15} />
+                  <ChevronRight size={16} />
                 </Button>
               </div>
             </div>
@@ -401,22 +385,22 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
         </AnimatePresence>
       </div>
 
-      {/* Миниатюры тем/слайдов */}
+      {/* Миниатюры разделов/слайдов внизу */}
       {slides.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
+        <div className="flex gap-2 overflow-x-auto py-1.5 scrollbar-none">
           {slides.map((slide, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
               className={`
-                flex-shrink-0 px-3 py-1.5 rounded-xl border text-left transition-all duration-200
+                flex-shrink-0 px-3.5 py-1.5 rounded-xl border text-left transition-all duration-200 shadow-sm
                 ${index === currentSlide
-                  ? 'border-blue-500/60 bg-blue-500/15 text-blue-300 font-semibold'
-                  : `${borderColor} ${theme === 'dark' ? 'bg-white/[0.02] text-slate-400' : 'bg-slate-50 text-slate-600'} hover:border-white/20`
+                  ? 'border-cyan-400/60 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-cyan-300 font-semibold shadow-cyan-950/20'
+                  : `${borderColor} ${theme === 'dark' ? 'bg-white/[0.03] text-slate-400' : 'bg-slate-50 text-slate-600'} hover:border-white/20 hover:text-slate-200`
                 }
               `}
             >
-              <p className="text-[11px] max-w-[130px] truncate">
+              <p className="text-[11px] max-w-[140px] truncate">
                 {index + 1}. {slide.title}
               </p>
             </button>
@@ -426,4 +410,3 @@ export function TheorySlides({ theory, topicTitle, topicDescription = '', topicI
     </div>
   )
 }
-

@@ -8,7 +8,7 @@ import { InteractiveTask, InteractiveTaskStep } from '@/types'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || ''
-const OPENAI_MODEL = 'gpt-5-nano'
+const OPENAI_MODEL = import.meta.env.VITE_OPENAI_MODEL || 'gpt-4o-mini'
 
 interface GenerateTextOptions {
   prompt: string
@@ -45,25 +45,43 @@ const readOpenAIResponse = async (response: Response): Promise<string> => {
   throw new Error(`Неожиданный формат ответа от API: ${JSON.stringify(data).slice(0, 100)}... Проверьте консоль для деталей.`)
 }
 
-const requestChatCompletion = async (model: string, prompt: string, maxTokens: number) => {
+const requestChatCompletion = async (model: string, prompt: string, maxTokens: number): Promise<string> => {
+  const isReasoningModel = model.startsWith('o1') || model.startsWith('o3')
+  const payload: Record<string, any> = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: 'Ты — выдающийся преподаватель физики и автор современных наглядных интерактивных учебников. Твоя задача — создавать структурированные, безупречно оформленные конспекты уроков на русском языке. Никакого английского в заголовках, никаких служебных фраз. Используй LaTeX формулы в блоках $$ ... $$, а ключевые правила и определения — в цитатах (> **Определение:** ...), чтобы они отображались в красивых цветных рамках.'
+      },
+      { role: 'user', content: prompt }
+    ],
+  }
+
+  if (isReasoningModel) {
+    payload.max_completion_tokens = maxTokens
+  } else {
+    payload.max_tokens = maxTokens
+    payload.temperature = 0.5
+  }
+
   const response = await fetch(OPENAI_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      max_completion_tokens: maxTokens,
-      reasoning_effort: 'low',
-    })
+    body: JSON.stringify(payload)
   })
 
   if (!response.ok) {
     const errorText = await response.text()
+    if (response.status === 400 && model !== 'gpt-4o-mini') {
+      console.warn(`Model ${model} failed with 400. Retrying with gpt-4o-mini...`)
+      return requestChatCompletion('gpt-4o-mini', prompt, maxTokens)
+    }
     const error = new Error(`OpenAI API error: ${response.status} - ${errorText}`)
-      ; (error as any).status = response.status
+    ;(error as any).status = response.status
     throw error
   }
 
@@ -85,10 +103,10 @@ export async function generateText(options: GenerateTextOptions): Promise<string
     return await requestChatCompletion(model, prompt, maxTokens)
   } catch (error: any) {
     if (error?.status === 429) {
-      throw new Error('Превышен лимит запросов OpenAI. Попробуйте позже.')
+      throw new Error('Превышен лимит запросов OpenAI (429). Проверьте баланс или попробуйте позже.')
     }
     if (error?.status === 401) {
-      throw new Error('Неверный API ключ OpenAI. Проверьте VITE_OPENAI_API_KEY в .env файле.')
+      throw new Error('Неверный API ключ OpenAI (401). Проверьте VITE_OPENAI_API_KEY в .env файле.')
     }
     throw new Error(error?.message || 'Ошибка при генерации текста')
   }
@@ -98,52 +116,61 @@ export async function generateText(options: GenerateTextOptions): Promise<string
  * Генерация теории для темы
  */
 export async function generateTheory(topicTitle: string, topicDescription: string): Promise<string> {
-  const prompt = `Сгенерируй подробный учебный урок по физике для школьников на тему: "${topicTitle}".  
-Урок должен включать следующие разделы:
+  const prompt = `Создай подробный, наглядный интерактивный конспект урока по физике для школьников на тему: "${topicTitle}".  
+${topicDescription ? `Контекст темы: ${topicDescription}` : ''}
 
-1. **Введение**  
-   - Объясни, что изучается в теме и зачем это важно.  
-   - Сделай текст понятным и интересным, используй простые примеры из жизни.
+ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА ОФОРМЛЕНИЯ:
+1. Пиши исключительно на чистом грамотном русском языке. Запрещено использовать английские слова в названиях (например, строго "Законы Ньютона", а НЕ "Newton's законы").
+2. Никаких служебных фраз и мета-текста! Не пиши фразы вроде "(в формате LaTeX)", "Вот конспект:", "Давайте рассмотрим".
+3. Каждую ключевую формулу выноси на отдельную строку в двойных долларах:
+$$ [формула] $$
+4. Главные определения, физические законы и важные выводы бери в цитаты через "> " — интерфейс оформит их в стильные цветные рамки:
+> **Определение:** [Текст определения]
+> **Закон:** [Формулировка физического закона]
+> **Важно:** [Ключевой нюанс или предостережение]
+> **Физический смысл:** [Простое объяснение сути формулы]
+5. Для списков используй аккуратные дефисы "- ". Не используй точки "·" или стрелки "⇒".
 
-2. **Основные понятия**  
-   - Дай точные определения ключевых терминов.  
-   - Если есть формулы — включи их в формате LaTeX.  
-   - Приведи примеры из реальной жизни или учебных задач.
+СТРУКТУРА СЛАЙДОВ (ровно 6 разделов, каждый начинается с '## [Название]'):
 
-3. **Законы и формулы**  
-   - Опиши основные законы, правила и формулы, относящиеся к теме.  
-   - Дай короткое объяснение каждой формулы.  
-   - При возможности включи пример расчета.
+## Введение
+- Увлекательное введение через реальную жизненную ситуацию или аналогию.
+- Зачем мы изучаем это явление и где с ним сталкиваемся каждый день.
 
-4. **Примеры и задачи**  
-   - Приведи 2–3 примера решения задач, связанных с темой.  
-   - Для каждой задачи укажи условие, решение и ответ.  
-   - Сделай примеры понятными и пошаговыми.
+## Основные понятия
+- Четкие определения ключевых физических терминов.
+- Главное определение обязательно выдели в рамку:
+> **Определение:** ...
+- Укажи физические величины и их единицы измерения в СИ.
 
-5. **Роль и применение в жизни**  
-   - Объясни, где и как эти понятия или законы применяются на практике (инженерия, спорт, транспорт и т.д.).
+## Законы и формулы
+- Главный физический закон в рамке:
+> **Закон:** [Формулировка]
+- Основная формула в отдельном блоке:
+$$ [формула] $$
+- Расшифровка каждой переменной списком:
+  - где $F$ — сила ($[\\text{Н}]$)
+  - $m$ — масса ($[\\text{кг}]$)
+- Физический смысл формулы в рамке:
+> **Физический смысл:** ...
 
-6. **Заключение**  
-   - Подведи итоги урока.  
-   - Объясни, почему понимание этих понятий важно для дальнейшего изучения физики.
+## Примеры и задачи
+- 1–2 понятных пошаговых примера решения типичных задач.
+- Оформи решение аккуратно:
+**Пример 1:** [Краткое условие]  
+*Дано:* $m = 2\\text{ кг}$, $a = 3\\text{ м/с}^2$  
+*Найти:* $F$  
+*Решение:* По закону $$ F = m \\cdot a $$ получаем: $$ F = 2 \\cdot 3 = 6\\text{ Н} $$  
+*Ответ:* $6\\text{ Н}$.
 
-**Дополнительно:**  
-- Текст должен быть структурированным, логичным и легко читаемым.  
-- Используй ясный язык, подходящий для школьников.  
-- Формулы и вычисления — в LaTeX.  
-- Примеры — реалистичные и наглядные.
+## Где это работает в жизни
+- 3–4 ярких примера применения в реальном мире: транспорт, спорт, космонавтика, техника или быт.
+- Краткое понятное объяснение каждого примера.
 
-Описание темы: ${topicDescription}
-
-Важно: Каждый раздел должен начинаться с заголовка на отдельной строке в формате:
-**Введение**
-**Основные понятия**
-**Законы и формулы**
-**Примеры и задачи**
-**Роль и применение в жизни**
-**Заключение**
-
-Создай полный урок на русском языке.`
+## Итоги и выводы
+- 2–3 главных вывода, которые нужно запомнить.
+- Финальное правило в рамке:
+> **Запомните:** [Главная мысль урока]`
 
   return await generateText({
     prompt,

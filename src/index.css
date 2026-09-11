@@ -224,7 +224,7 @@
 
   .latex-block {
     display: block;
-    my-4: 1rem;
+    margin: 1.25rem 0;
     text-align: center;
   }
 
@@ -326,11 +326,7 @@
     color: inherit;
   }
 
-  /* Убираем фон для формул */
-  html.light .latex-inline,
-  .light .latex-inline,
-  html.light .latex-block,
-  .light .latex-block,
+  /* Убираем фон для формул в старых карточках */
   html.light .formula-display,
   .light .formula-display {
     background: transparent !important;
@@ -338,10 +334,6 @@
     color: inherit;
   }
 
-  html.dark .latex-inline,
-  .dark .latex-inline,
-  html.dark .latex-block,
-  .dark .latex-block,
   html.dark .formula-display,
   .dark .formula-display {
     background: transparent !important;

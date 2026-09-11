@@ -837,6 +837,7 @@ export function LessonPage() {
               topicTitle={selectedTopic.title}
               topicDescription={selectedTopic.description}
               topicId={selectedTopic.id}
+              isFullscreen={isFullscreen}
               onTheoryGenerated={(newTheory, formulas) => {
                 updateTopic(selectedTopic.id, {
                   theory: newTheory,
