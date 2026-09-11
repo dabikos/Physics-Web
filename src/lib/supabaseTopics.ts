@@ -123,78 +123,72 @@ export async function getSectionsWithTopics(): Promise<Record<string, TopicSubse
   return result
 }
 
-// Получить одну тему по ID
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
+
+// Получить одну тему по ID из базы данных Railway
 export async function getTopicById(topicId: string): Promise<LessonTopic | null> {
-  if (!isSupabaseConfigured) {
-    for (const subsections of Object.values(localAllTopics)) {
-      for (const sub of subsections) {
-        const found = sub.topics.find(t => t.id === topicId)
-        if (found) return found
+  try {
+    const res = await fetch(`${API_BASE}/api/topics/${topicId}`)
+    if (res.ok) {
+      const data = await res.json()
+      return {
+        id: data.id,
+        title: data.title,
+        description: data.brief_info || '',
+        theory: data.brief_info || '',
+        formulas: data.formulas || [],
+        examples: data.example_problem ? [data.example_problem] : [],
+        problems: []
       }
     }
-    return null
+  } catch (e) {
+    console.warn('Railway API topic fetch fallback:', e)
   }
 
-  const { data, error } = await supabase
-    .from('topics')
-    .select('*')
-    .eq('id', topicId)
-    .single()
-
-  if (error) {
-    console.error('Ошибка загрузки темы:', error)
-    return null
+  for (const subsections of Object.values(localAllTopics)) {
+    for (const sub of subsections) {
+      const found = sub.topics.find(t => t.id === topicId)
+      if (found) return found
+    }
   }
-
-  if (!data) return null
-
-  return {
-    id: data.id,
-    title: data.title,
-    description: data.description,
-    theory: data.theory || undefined,
-    formulas: data.formulas || undefined,
-    examples: data.examples || undefined,
-    problems: data.problems || undefined,
-  }
+  return null
 }
 
-// Получить тему по названию (первое совпадение)
+// Получить тему по названию из базы данных Railway
 export async function getTopicByTitle(title: string): Promise<LessonTopic | null> {
   const cleanTitle = title.trim()
   if (!cleanTitle) return null
 
-  if (!isSupabaseConfigured) {
-    const lower = cleanTitle.toLowerCase()
-    for (const subsections of Object.values(localAllTopics)) {
-      for (const sub of subsections) {
-        const found = sub.topics.find(t => t.title.toLowerCase().includes(lower))
-        if (found) return found
+  try {
+    const res = await fetch(`${API_BASE}/api/topics`)
+    if (res.ok) {
+      const list = await res.json()
+      const lower = cleanTitle.toLowerCase()
+      const found = Array.isArray(list) ? list.find((t: any) => t.title?.toLowerCase().includes(lower)) : null
+      if (found) {
+        return {
+          id: found.id,
+          title: found.title,
+          description: found.brief_info || '',
+          theory: found.brief_info || '',
+          formulas: found.formulas || [],
+          examples: found.example_problem ? [found.example_problem] : [],
+          problems: []
+        }
       }
     }
-    return null
+  } catch (e) {
+    console.warn('Railway API topics search fallback:', e)
   }
 
-  const { data, error } = await supabase
-    .from('topics')
-    .select('*')
-    .ilike('title', `%${cleanTitle}%`)
-    .limit(1)
-    .single()
-
-  if (error || !data) {
-    return null
+  const lower = cleanTitle.toLowerCase()
+  for (const subsections of Object.values(localAllTopics)) {
+    for (const sub of subsections) {
+      const found = sub.topics.find(t => t.title.toLowerCase().includes(lower))
+      if (found) return found
+    }
   }
-
-  return {
-    id: data.id,
-    title: data.title,
-    description: data.description,
-    theory: data.theory || undefined,
-    formulas: data.formulas || undefined,
-    examples: data.examples || undefined,
-    problems: data.problems || undefined,
-  }
+  return null
 }
 
 // Добавить тему (для админки)
