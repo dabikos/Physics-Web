@@ -5,7 +5,7 @@ import 'katex/dist/katex.min.css'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
 const ADMIN_PAGE_SIZE = 100
 
 type ContentTab = 'overview' | 'lessons' | 'tests' | 'tasks' | 'formulas'

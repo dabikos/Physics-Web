@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import type { Worksheet, WorksheetTask } from '@/types/worksheet'
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
 
 interface Props {
   worksheet: Worksheet

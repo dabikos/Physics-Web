@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,7 +24,7 @@ interface StudentData {
     stage: PlantStage
 }
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
 
 export function ClassGarden({ isOpen, onClose, onFinish }: ClassGardenProps) {
     const { theme } = useTheme()

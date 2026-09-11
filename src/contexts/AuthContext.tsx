@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
 
 interface UserData {
   id: string
@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const TOKEN_KEY = 'physics_token'
 const USER_KEY = 'physics_user'
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8003'
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
 const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || '')
   .split(',')
   .map((email) => email.trim().toLowerCase())

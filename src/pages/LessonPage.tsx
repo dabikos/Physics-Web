@@ -42,7 +42,7 @@ const controlButtons = [
   { id: 'ai-explain' as DemoState, label: 'AI объясни', icon: <Sparkles size={32} />, color: 'from-violet-500 to-purple-500', accent: true },
 ]
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:8003`
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
 
 const getDemoContent = (theme: 'dark' | 'light'): Record<DemoState, { title: string; description: string; icon: React.ReactNode; hint: string }> => ({
   idle: {

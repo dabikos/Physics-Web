@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:8003`
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://physics-app-production-2585.up.railway.app'
 
 interface Session {
   id: string
