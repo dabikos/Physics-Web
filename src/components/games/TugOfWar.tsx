@@ -557,8 +557,8 @@ export function TugOfWar() {
 
   const botTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const BASE_PULL = 6.5
-  const WIN_THRESHOLD = 14
+  const BASE_PULL = 5
+  const WIN_ZONE = 25 // When position <= 25: Team 1 wins. When position >= 75: Team 2 wins.
 
   useEffect(() => {
     sounds.enabled = soundOn
@@ -613,13 +613,14 @@ export function TugOfWar() {
         const pullDelta = BASE_PULL * comboMultiplier
         setTeam1Score((s) => s + Math.round(10 * comboMultiplier))
 
+        // Team 1 is on the LEFT: pulling to the left reduces position towards WIN_ZONE (25%)
         setPosition((prev) => {
           const next = Math.max(0, prev - pullDelta)
-          if (next <= WIN_THRESHOLD) {
+          if (next <= WIN_ZONE) {
             setGameOver(true)
             setWinner(1)
             sounds.playVictory()
-            return WIN_THRESHOLD
+            return WIN_ZONE
           }
           return next
         })
@@ -628,6 +629,8 @@ export function TugOfWar() {
       } else {
         sounds.playWrong()
         setTeam1Combo(0)
+        // Team 1 slip: cable slips 1.5% towards Team 2
+        setPosition((prev) => Math.min(75, prev + 1.5))
       }
 
       setTimeout(() => {
@@ -659,13 +662,14 @@ export function TugOfWar() {
         const pullDelta = BASE_PULL * comboMultiplier
         setTeam2Score((s) => s + Math.round(10 * comboMultiplier))
 
+        // Team 2 is on the RIGHT: pulling to the right increases position towards (100 - WIN_ZONE = 75%)
         setPosition((prev) => {
           const next = Math.min(100, prev + pullDelta)
-          if (next >= 100 - WIN_THRESHOLD) {
+          if (next >= 100 - WIN_ZONE) {
             setGameOver(true)
             setWinner(2)
             sounds.playVictory()
-            return 100 - WIN_THRESHOLD
+            return 100 - WIN_ZONE
           }
           return next
         })
@@ -674,6 +678,8 @@ export function TugOfWar() {
       } else {
         sounds.playWrong()
         setTeam2Combo(0)
+        // Team 2 slip: cable slips 1.5% towards Team 1
+        setPosition((prev) => Math.max(25, prev - 1.5))
       }
 
       setTimeout(() => {
@@ -713,7 +719,10 @@ export function TugOfWar() {
     return () => clearInterval(interval)
   }, [gameMode, botDifficulty, gameOver, team2Locked, team2Question, handleTeam2Answer])
 
-  const cableOffset = (50 - position) * 3.6
+  // In percent: from -25% (Team 1 wins on left) to +25% (Team 2 wins on right)
+  // Negative offset moves cable LEFT (towards Team 1)
+  // Positive offset moves cable RIGHT (towards Team 2)
+  const cableOffsetPercent = position - 50
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-4 select-none pb-8">
@@ -856,20 +865,20 @@ export function TugOfWar() {
 
         {/* WIN ZONES (Demarcated on Arena) */}
         <div
-          className="absolute left-0 top-0 bottom-0 border-r-2 border-dashed border-cyan-400/40 bg-cyan-500/10 pointer-events-none z-0"
-          style={{ width: `${WIN_THRESHOLD}%` }}
+          className="absolute left-0 top-0 bottom-0 border-r-2 border-dashed border-cyan-400/50 bg-cyan-500/10 pointer-events-none z-0"
+          style={{ width: `${WIN_ZONE}%` }}
         >
-          <span className="absolute bottom-2 left-2 text-[10px] font-mono font-bold text-cyan-400 tracking-wider">
-            ЗОНА ПОБЕДЫ 1
-          </span>
+          <div className="absolute top-3 left-3 text-[10px] sm:text-xs font-black text-cyan-400 tracking-wider flex items-center gap-1">
+            <Trophy size={14} /> ФИНИШ СИНИХ
+          </div>
         </div>
         <div
-          className="absolute right-0 top-0 bottom-0 border-l-2 border-dashed border-rose-400/40 bg-rose-500/10 pointer-events-none z-0"
-          style={{ width: `${WIN_THRESHOLD}%` }}
+          className="absolute right-0 top-0 bottom-0 border-l-2 border-dashed border-rose-400/50 bg-rose-500/10 pointer-events-none z-0"
+          style={{ width: `${WIN_ZONE}%` }}
         >
-          <span className="absolute bottom-2 right-2 text-[10px] font-mono font-bold text-rose-400 tracking-wider">
-            ЗОНА ПОБЕДЫ 2
-          </span>
+          <div className="absolute top-3 right-3 text-[10px] sm:text-xs font-black text-rose-400 tracking-wider flex items-center gap-1">
+            ФИНИШ КРАСНЫХ <Trophy size={14} />
+          </div>
         </div>
 
         {/* CENTER LASER LINE (THE EQUILIBRIUM ZERO MARK) */}
@@ -881,14 +890,14 @@ export function TugOfWar() {
           </span>
         </div>
 
-        {/* ═══ MOVING ASSEMBLY (CABLE + CHARACTERS + TENSION CORE) ═══ */}
+        {/* ═══ MOVING CABLE & TENSION CORE ═══ */}
         <motion.div
-          className="absolute inset-0"
-          animate={{ x: cableOffset }}
+          className="absolute inset-0 pointer-events-none"
+          animate={{ x: `${cableOffsetPercent}%` }}
           transition={{ type: 'spring', stiffness: 75, damping: 13 }}
         >
           {/* ── THE ENERGY CABLE / ROPE ── */}
-          <div className="absolute left-[-20%] right-[-20%]" style={{ top: '51%' }}>
+          <div className="absolute left-[-40%] right-[-40%]" style={{ top: '51%' }}>
             <div className="absolute w-full h-3 rounded-full bg-black/30 top-1 blur-sm" />
             <div
               className="relative w-full h-2.5 rounded-full overflow-hidden"
@@ -921,21 +930,6 @@ export function TugOfWar() {
             </div>
           </div>
 
-          {/* ── TEAM 1 (BLUE QUANTUMS) CHARACTERS ── */}
-          <div className="absolute left-[7%] bottom-4 flex items-end -space-x-4">
-            {[0, 1, 2].map((idx) => (
-              <div key={idx} style={{ zIndex: 3 - idx }}>
-                <CyberPerson
-                  team="blue"
-                  direction="left"
-                  isPulling={team1Pulling || position < 47}
-                  hasCombo={team1Combo >= 2}
-                  index={idx}
-                />
-              </div>
-            ))}
-          </div>
-
           {/* ── CENTER TENSION CORE (MARKER) ── */}
           <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '40%' }}>
             <motion.div
@@ -960,21 +954,44 @@ export function TugOfWar() {
               <div className="w-1.5 h-6 bg-gradient-to-b from-white to-purple-400 rounded-full shadow" />
             </motion.div>
           </div>
+        </motion.div>
 
-          {/* ── TEAM 2 (RED PHOTONS) CHARACTERS ── */}
-          <div className="absolute right-[7%] bottom-4 flex items-end -space-x-4 flex-row-reverse">
-            {[0, 1, 2].map((idx) => (
-              <div key={idx} style={{ zIndex: 3 - idx }}>
-                <CyberPerson
-                  team="red"
-                  direction="right"
-                  isPulling={team2Pulling || position > 53}
-                  hasCombo={team2Combo >= 2}
-                  index={idx}
-                />
-              </div>
-            ))}
-          </div>
+        {/* ── TEAM 1 (BLUE QUANTUMS) CHARACTERS ── */}
+        <motion.div
+          className="absolute left-[6%] bottom-4 flex items-end -space-x-4 z-10"
+          animate={{ x: `${cableOffsetPercent * 0.35}%` }}
+          transition={{ type: 'spring', stiffness: 75, damping: 13 }}
+        >
+          {[0, 1, 2].map((idx) => (
+            <div key={idx} style={{ zIndex: 3 - idx }}>
+              <CyberPerson
+                team="blue"
+                direction="left"
+                isPulling={team1Pulling || position < 47}
+                hasCombo={team1Combo >= 2}
+                index={idx}
+              />
+            </div>
+          ))}
+        </motion.div>
+
+        {/* ── TEAM 2 (RED PHOTONS) CHARACTERS ── */}
+        <motion.div
+          className="absolute right-[6%] bottom-4 flex items-end -space-x-4 flex-row-reverse z-10"
+          animate={{ x: `${cableOffsetPercent * 0.35}%` }}
+          transition={{ type: 'spring', stiffness: 75, damping: 13 }}
+        >
+          {[0, 1, 2].map((idx) => (
+            <div key={idx} style={{ zIndex: 3 - idx }}>
+              <CyberPerson
+                team="red"
+                direction="right"
+                isPulling={team2Pulling || position > 53}
+                hasCombo={team2Combo >= 2}
+                index={idx}
+              />
+            </div>
+          ))}
         </motion.div>
       </div>
 
@@ -997,9 +1014,9 @@ export function TugOfWar() {
 
           <div className="font-mono text-slate-500 dark:text-slate-400 text-xs">
             {position < 50
-              ? `← ПРЕИМУЩЕСТВО СИНИХ: ${Math.round(50 - position)}%`
+              ? `← ПРЕИМУЩЕСТВО СИНИХ: ${Math.round((50 - position) * 4)}%`
               : position > 50
-                ? `ПРЕИМУЩЕСТВО КРАСНЫХ: ${Math.round(position - 50)}% →`
+                ? `ПРЕИМУЩЕСТВО КРАСНЫХ: ${Math.round((position - 50) * 4)}% →`
                 : 'БАЛАНС 50 : 50'}
           </div>
 
@@ -1024,11 +1041,11 @@ export function TugOfWar() {
 
           <div
             className="absolute left-0 top-0 bottom-0 bg-cyan-500/30 border-r border-cyan-400/60"
-            style={{ width: `${WIN_THRESHOLD}%` }}
+            style={{ width: `${WIN_ZONE}%` }}
           />
           <div
             className="absolute right-0 top-0 bottom-0 bg-rose-500/30 border-l border-rose-400/60"
-            style={{ width: `${WIN_THRESHOLD}%` }}
+            style={{ width: `${WIN_ZONE}%` }}
           />
 
           <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40 -translate-x-1/2" />
@@ -1063,7 +1080,9 @@ export function TugOfWar() {
                 1
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Команда «Синие Кванты»</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {gameMode === 'ai' ? 'Ваша команда («Синие Кванты»)' : 'Команда 1 («Синие Кванты»)'}
+                </h3>
                 <span className="text-[11px] text-cyan-500 font-medium">Счёт: {team1Score} очков</span>
               </div>
             </div>
@@ -1267,14 +1286,22 @@ export function TugOfWar() {
               </div>
 
               <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
-                {winner === 1 ? '🎉 ПОБЕДА СИНИХ КВАНТОВ! 🎉' : '🎉 ПОБЕДА КРАСНЫХ! 🎉'}
+                {gameMode === 'ai'
+                  ? winner === 1
+                    ? '🎉 ПОБЕДА! ВЫ ПЕРЕТЯНУЛИ КАНАТ! 🎉'
+                    : '🤖 КИБЕР-БОТ ПЕРЕТЯНУЛ КАНАТ!'
+                  : winner === 1
+                    ? '🎉 ПОБЕДА СИНИХ КВАНТОВ! 🎉'
+                    : '🎉 ПОБЕДА КРАСНЫХ ФОТОНОВ! 🎉'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-                {winner === 1
-                  ? 'Команда 1 успешно перетянула силовой кабель на свою сторону!'
-                  : gameMode === 'ai'
-                    ? 'Кибер-Бот перетянул кабель. Тренируйтесь ещё!'
-                    : 'Команда 2 одержала победу в физической дуэли!'}
+                {gameMode === 'ai'
+                  ? winner === 1
+                    ? 'Отличная работа! Вы ответили на вопросы быстрее бота и перетянули канат на свою сторону!'
+                    : 'Бот оказался быстрее. Попробуйте ещё раз или выберите уровень полегче!'
+                  : winner === 1
+                    ? 'Команда 1 («Синие Кванты») успешно перетянула силовой кабель на свою сторону!'
+                    : 'Команда 2 («Красные Фотоны») успешно перетянула силовой кабель на свою сторону!'}
               </p>
 
               <div
