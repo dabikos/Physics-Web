@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, Target, Activity, ArrowRightLeft, Waves, PanelLeftClose, PanelLeftOpen, PenTool } from 'lucide-react'
+import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, Target, Activity, ArrowRightLeft, Waves, Focus, Flame, PanelLeftClose, PanelLeftOpen, PenTool } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -27,6 +27,9 @@ import { ProjectileMotionSimulation } from '@/components/simulations/ProjectileM
 import { PendulumSimulation } from '@/components/simulations/PendulumSimulation'
 import { CollisionsSimulation } from '@/components/simulations/CollisionsSimulation'
 import { ArchimedesSimulation } from '@/components/simulations/ArchimedesSimulation'
+import { OpticsLensSimulation } from '@/components/simulations/OpticsLensSimulation'
+import { GasLawsSimulation } from '@/components/simulations/GasLawsSimulation'
+import { CircuitSimulation } from '@/components/simulations/CircuitSimulation'
 import { OhmsLawSimulation } from '@/components/simulations/OhmsLawSimulation'
 import { EnergyOnInclineSimulation } from '@/components/simulations/EnergyOnInclineSimulation'
 import { simulationCatalog, SimulationId } from '@/data/simulations'
@@ -145,6 +148,9 @@ export function LessonPage() {
     'collisions': { m1: 2, v1: 3, m2: 2, v2: -2, elasticity: 1, timeScale: 1 },
     'energy-incline': { mass: 2, height: 2, angle: 30, mu: 0.1, timeScale: 1 },
     'archimedes': { fluidDensity: 1000, bodyDensity: 600, bodyVolume: 0.005, immersionFraction: 0.6 },
+    'optics-lens': { lensType: 'converging' as const, focalLength: 60, objectDistance: 110, objectHeight: 45 },
+    'gas-laws': { processType: 'free' as const, temperature: 300, volume: 5, particleCount: 60 },
+    'circuits': { circuitType: 'series' as const, voltage: 12, r1: 6, r2: 4 },
     'ohms-law': { voltage: 12, resistance: 6 },
   })
   const [generatedProblems, setGeneratedProblems] = useState<string[]>([])
@@ -802,7 +808,7 @@ export function LessonPage() {
       return null
     }
 
-    if (!selectedTopic) {
+    if (!selectedTopic && activeState !== 'simulations') {
       return (
         <div className="text-center">
           <p className={textMuted}>Выберите тему из списка</p>
@@ -885,6 +891,9 @@ export function LessonPage() {
     'collisions': <ArrowRightLeft size={28} />,
     'energy-incline': <Triangle size={28} />,
     'archimedes': <Waves size={28} />,
+    'optics-lens': <Focus size={28} />,
+    'gas-laws': <Flame size={28} />,
+    'circuits': <Zap size={28} />,
     'ohms-law': <Zap size={28} />,
   }
 
@@ -1009,6 +1018,65 @@ export function LessonPage() {
         <circle cx="310" cy="60" r="6" fill="#fff1d6" />
       </svg>
     ),
+    'optics-lens': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="lensBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#818cf8" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#lensBg)" />
+        <line x1="20" y1="60" x2="340" y2="60" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5 5" opacity="0.6" />
+        <ellipse cx="180" cy="60" rx="14" ry="42" fill="#38bdf8" opacity="0.35" stroke="#38bdf8" strokeWidth="2.5" />
+        <line x1="80" y1="60" x2="80" y2="30" stroke="#f43f5e" strokeWidth="3" strokeLinecap="round" />
+        <polygon points="80,24 76,32 84,32" fill="#f43f5e" />
+        <line x1="80" y1="30" x2="180" y2="30" stroke="#facc15" strokeWidth="2" opacity="0.8" />
+        <line x1="180" y1="30" x2="280" y2="90" stroke="#facc15" strokeWidth="2" opacity="0.8" />
+        <line x1="80" y1="30" x2="280" y2="90" stroke="#38bdf8" strokeWidth="2" opacity="0.8" />
+        <line x1="280" y1="60" x2="280" y2="90" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
+        <polygon points="280,96 276,88 284,88" fill="#10b981" />
+      </svg>
+    ),
+    'gas-laws': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="gasBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#f97316" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#e11d48" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#gasBg)" />
+        <rect x="90" y="24" width="180" height="74" rx="6" fill="rgba(255,255,255,0.06)" stroke="#94a3b8" strokeWidth="2" />
+        <rect x="200" y="26" width="14" height="70" rx="3" fill="#cbd5e1" stroke="#475569" strokeWidth="1.5" />
+        <line x1="214" y1="61" x2="285" y2="61" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="120" cy="45" r="4" fill="#38bdf8" />
+        <circle cx="155" cy="55" r="4" fill="#f43f5e" />
+        <circle cx="135" cy="75" r="4" fill="#fbbf24" />
+        <circle cx="175" cy="40" r="4" fill="#38bdf8" />
+        <circle cx="180" cy="78" r="4" fill="#f43f5e" />
+        <circle cx="110" cy="80" r="4" fill="#a855f7" />
+        <path d="M130 102 Q145 92 160 102 T190 102" fill="none" stroke="#f97316" strokeWidth="3" />
+      </svg>
+    ),
+    'circuits': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="circBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#eab308" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#ca8a04" stopOpacity="0.15" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#circBg)" />
+        <rect x="50" y="30" width="260" height="60" rx="8" fill="none" stroke="#eab308" strokeWidth="3" opacity="0.7" />
+        <line x1="165" y1="20" x2="165" y2="40" stroke="#facc15" strokeWidth="4" strokeLinecap="round" />
+        <line x1="175" y1="25" x2="175" y2="35" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" />
+        <rect x="90" y="82" width="45" height="16" rx="3" fill="#64748b" stroke="#facc15" strokeWidth="1.5" />
+        <rect x="200" y="82" width="45" height="16" rx="3" fill="#64748b" stroke="#facc15" strokeWidth="1.5" />
+        <circle cx="310" cy="60" r="12" fill="#fef08a" opacity="0.85" />
+        <path d="M305 60 L315 60 M310 55 L310 65" stroke="#ca8a04" strokeWidth="2" />
+      </svg>
+    ),
   }
 
   const uniformParams = simulationParams['uniform-acceleration']
@@ -1017,6 +1085,9 @@ export function LessonPage() {
   const collisionsParams = simulationParams['collisions']
   const inclineParams = simulationParams['energy-incline']
   const archimedesParams = simulationParams['archimedes']
+  const opticsParams = simulationParams['optics-lens']
+  const gasParams = simulationParams['gas-laws']
+  const circuitsParams = simulationParams['circuits']
   const ohmParams = simulationParams['ohms-law']
 
   if (selectedSimulationId) {
@@ -1041,7 +1112,7 @@ export function LessonPage() {
         <div className="space-y-4">
           {selectedSimulationId === 'uniform-acceleration' && (
             <UniformAccelerationSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               v0={uniformParams.v0}
               accel={uniformParams.accel}
               timeScale={uniformParams.timeScale}
@@ -1055,7 +1126,7 @@ export function LessonPage() {
           )}
           {selectedSimulationId === 'projectile-motion' && (
             <ProjectileMotionSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               angle={projectileParams.angle}
               v0={projectileParams.v0}
               height={projectileParams.height}
@@ -1071,7 +1142,7 @@ export function LessonPage() {
           )}
           {selectedSimulationId === 'pendulum' && (
             <PendulumSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               pendulumType={pendulumParams.type}
               length={pendulumParams.length}
               mass={pendulumParams.mass}
@@ -1089,7 +1160,7 @@ export function LessonPage() {
           )}
           {selectedSimulationId === 'collisions' && (
             <CollisionsSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               m1={collisionsParams.m1}
               v1={collisionsParams.v1}
               m2={collisionsParams.m2}
@@ -1106,7 +1177,7 @@ export function LessonPage() {
           )}
           {selectedSimulationId === 'energy-incline' && (
             <EnergyOnInclineSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               mass={inclineParams.mass}
               height={inclineParams.height}
               angle={inclineParams.angle}
@@ -1122,7 +1193,7 @@ export function LessonPage() {
           )}
           {selectedSimulationId === 'archimedes' && (
             <ArchimedesSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               fluidDensity={archimedesParams.fluidDensity}
               bodyDensity={archimedesParams.bodyDensity}
               bodyVolume={archimedesParams.bodyVolume}
@@ -1135,9 +1206,54 @@ export function LessonPage() {
               }
             />
           )}
+          {selectedSimulationId === 'optics-lens' && (
+            <OpticsLensSimulation
+              topicTitle={selectedTopic?.title}
+              lensType={opticsParams.lensType}
+              focalLength={opticsParams.focalLength}
+              objectDistance={opticsParams.objectDistance}
+              objectHeight={opticsParams.objectHeight}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'optics-lens': { ...prev['optics-lens'], ...params },
+                }))
+              }
+            />
+          )}
+          {selectedSimulationId === 'gas-laws' && (
+            <GasLawsSimulation
+              topicTitle={selectedTopic?.title}
+              processType={gasParams.processType}
+              temperature={gasParams.temperature}
+              volume={gasParams.volume}
+              particleCount={gasParams.particleCount}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'gas-laws': { ...prev['gas-laws'], ...params },
+                }))
+              }
+            />
+          )}
+          {selectedSimulationId === 'circuits' && (
+            <CircuitSimulation
+              topicTitle={selectedTopic?.title}
+              circuitType={circuitsParams.circuitType}
+              voltage={circuitsParams.voltage}
+              r1={circuitsParams.r1}
+              r2={circuitsParams.r2}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'circuits': { ...prev['circuits'], ...params },
+                }))
+              }
+            />
+          )}
           {selectedSimulationId === 'ohms-law' && (
             <OhmsLawSimulation
-              topicTitle={selectedTopic.title}
+              topicTitle={selectedTopic?.title}
               voltage={ohmParams.voltage}
               resistance={ohmParams.resistance}
               onParamsChange={(params) =>
@@ -1157,7 +1273,7 @@ export function LessonPage() {
     <div className="w-full mx-auto text-left space-y-4">
       {renderSectionHeader(
         <Cpu size={16} />,
-        `Симуляции: ${selectedTopic.title}`,
+        `Симуляции${selectedTopic?.title ? `: ${selectedTopic.title}` : ''}`,
         theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-600',
         null,
         'Интерактивные виртуальные опыты для демонстрации физических законов'

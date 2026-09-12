@@ -5,6 +5,9 @@ export type SimulationId =
   | 'collisions'
   | 'energy-incline'
   | 'archimedes'
+  | 'optics-lens'
+  | 'gas-laws'
+  | 'circuits'
   | 'ohms-law'
 
 export interface SimulationMeta {
@@ -50,6 +53,24 @@ export const simulationCatalog: SimulationMeta[] = [
     title: 'Закон Архимеда и гидростатика',
     description: 'Плавание и погружение тел в разных жидкостях, динамометр и силы.',
     tags: ['F_a', 'ρ_ж', 'V_погр', 'P_вид'],
+  },
+  {
+    id: 'optics-lens',
+    title: 'Тонкая линза и геометрическая оптика',
+    description: 'Ход 3 главных лучей, фокусы, построение действительных и мнимых изображений.',
+    tags: ['1/F=1/d+1/f', 'F', 'd', 'Г', 'Оптика'],
+  },
+  {
+    id: 'gas-laws',
+    title: 'Идеальный газ и изопроцессы (МКТ)',
+    description: 'Движение молекул под поршнем, P-V диаграмма, законы Бойля-Мариотта, Гей-Люссака, Шарля.',
+    tags: ['P', 'V', 'T', 'PV=νRT', 'МКТ'],
+  },
+  {
+    id: 'circuits',
+    title: 'Схемотехника: цепи проводников',
+    description: 'Последовательное и параллельное соединение резисторов, анимация тока, лампочка.',
+    tags: ['R_общ', 'I_общ', 'Последовательно', 'Параллельно'],
   },
   {
     id: 'ohms-law',
