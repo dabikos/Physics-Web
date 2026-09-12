@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, PanelLeftClose, PanelLeftOpen, PenTool } from 'lucide-react'
+import { BookOpen, Puzzle, Cpu, FunctionSquare, ClipboardCheck, Sparkles, CheckCircle2, Play, X, Loader2, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut, Users, Trash2, Gauge, Zap, Triangle, Target, Activity, ArrowRightLeft, Waves, PanelLeftClose, PanelLeftOpen, PenTool } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -23,6 +23,10 @@ import { LessonComplete } from '@/components/lesson/LessonComplete'
 import { ClassGarden } from '@/components/lesson/ClassGarden'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { UniformAccelerationSimulation } from '@/components/simulations/UniformAccelerationSimulation'
+import { ProjectileMotionSimulation } from '@/components/simulations/ProjectileMotionSimulation'
+import { PendulumSimulation } from '@/components/simulations/PendulumSimulation'
+import { CollisionsSimulation } from '@/components/simulations/CollisionsSimulation'
+import { ArchimedesSimulation } from '@/components/simulations/ArchimedesSimulation'
 import { OhmsLawSimulation } from '@/components/simulations/OhmsLawSimulation'
 import { EnergyOnInclineSimulation } from '@/components/simulations/EnergyOnInclineSimulation'
 import { simulationCatalog, SimulationId } from '@/data/simulations'
@@ -135,10 +139,14 @@ export function LessonPage() {
 
   const [selectedSimulationId, setSelectedSimulationId] = useState<SimulationId | null>(null)
   const [simulationParams, setSimulationParams] = useState({
-  'uniform-acceleration': { v0: 2, accel: 1, timeScale: 1 },
-  'ohms-law': { voltage: 12, resistance: 6 },
-  'energy-incline': { mass: 2, height: 2, angle: 30, mu: 0.1, timeScale: 1 },
-})
+    'uniform-acceleration': { v0: 2, accel: 1, timeScale: 1 },
+    'projectile-motion': { angle: 45, v0: 25, height: 0, g: 9.81, timeScale: 1 },
+    'pendulum': { type: 'thread' as const, length: 2, mass: 1, stiffness: 50, initDisplacement: 30, damping: 0.02, timeScale: 1 },
+    'collisions': { m1: 2, v1: 3, m2: 2, v2: -2, elasticity: 1, timeScale: 1 },
+    'energy-incline': { mass: 2, height: 2, angle: 30, mu: 0.1, timeScale: 1 },
+    'archimedes': { fluidDensity: 1000, bodyDensity: 600, bodyVolume: 0.005, immersionFraction: 0.6 },
+    'ohms-law': { voltage: 12, resistance: 6 },
+  })
   const [generatedProblems, setGeneratedProblems] = useState<string[]>([])
   const [isGeneratingProblems, setIsGeneratingProblems] = useState(false)
   const [problemsError, setProblemsError] = useState<string | null>(null)
@@ -872,8 +880,12 @@ export function LessonPage() {
         case 'simulations': {
   const simulationIconMap: Record<SimulationId, React.ReactNode> = {
     'uniform-acceleration': <Gauge size={28} />,
-    'ohms-law': <Zap size={28} />,
+    'projectile-motion': <Target size={28} />,
+    'pendulum': <Activity size={28} />,
+    'collisions': <ArrowRightLeft size={28} />,
     'energy-incline': <Triangle size={28} />,
+    'archimedes': <Waves size={28} />,
+    'ohms-law': <Zap size={28} />,
   }
 
   const simulationPreviewMap: Record<SimulationId, React.ReactNode> = {
@@ -899,21 +911,53 @@ export function LessonPage() {
         <circle cx="280" cy="44" r="6" fill="#bcd0ff" opacity="0.9" />
       </svg>
     ),
-    'ohms-law': (
+    'projectile-motion': (
       <svg viewBox="0 0 360 120" className="w-full h-full">
         <defs>
-          <linearGradient id="ohmBg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#ffd58a" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#ffb86a" stopOpacity="0.2" />
+          <linearGradient id="projBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#c084fc" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#e879f9" stopOpacity="0.15" />
           </linearGradient>
         </defs>
-        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#ohmBg)" />
-        <circle cx="70" cy="60" r="18" fill="#ffd58a" opacity="0.8" />
-        <rect x="108" y="50" width="86" height="20" rx="10" fill="#ffd58a" opacity="0.6" />
-        <rect x="210" y="50" width="50" height="20" rx="10" fill="#ffd58a" opacity="0.45" />
-        <path d="M260 60h60" stroke="#ffd58a" strokeWidth="6" strokeLinecap="round" />
-        <path d="M288 42l12 18-12 18" fill="#ffd58a" opacity="0.85" />
-        <circle cx="310" cy="60" r="6" fill="#fff1d6" />
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#projBg)" />
+        <line x1="20" y1="96" x2="340" y2="96" stroke="#c084fc" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
+        <path d="M40 96 Q160 16 280 96" fill="none" stroke="#e879f9" strokeWidth="4" strokeDasharray="6 4" />
+        <circle cx="40" cy="96" r="8" fill="#a855f7" />
+        <line x1="40" y1="96" x2="62" y2="74" stroke="#e879f9" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="160" cy="56" r="7" fill="#f43f5e" />
+        <circle cx="280" cy="96" r="6" fill="#10b981" />
+      </svg>
+    ),
+    'pendulum': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="pendBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#818cf8" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#c084fc" stopOpacity="0.15" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#pendBg)" />
+        <rect x="50" y="24" width="60" height="8" rx="4" fill="#818cf8" opacity="0.6" />
+        <line x1="80" y1="32" x2="110" y2="90" stroke="#818cf8" strokeWidth="3" />
+        <circle cx="110" cy="90" r="12" fill="#c084fc" />
+        <path d="M160 60 Q210 20 260 60 T340 60" fill="none" stroke="#38bdf8" strokeWidth="3" />
+      </svg>
+    ),
+    'collisions': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="colBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#fb923c" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#colBg)" />
+        <line x1="24" y1="84" x2="336" y2="84" stroke="#94a3b8" strokeWidth="4" strokeLinecap="round" opacity="0.5" />
+        <rect x="70" y="52" width="48" height="26" rx="6" fill="#38bdf8" />
+        <path d="M124 65h35" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+        <rect x="240" y="52" width="48" height="26" rx="6" fill="#fb923c" />
+        <path d="M234 65h-35" stroke="#fb923c" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="178" cy="65" r="7" fill="#facc15" />
       </svg>
     ),
     'energy-incline': (
@@ -933,11 +977,47 @@ export function LessonPage() {
         <line x1="298" y1="34" x2="298" y2="8" stroke="#7ee3c7" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
       </svg>
     ),
+    'archimedes': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="archBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#0284c7" stopOpacity="0.15" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#archBg)" />
+        <rect x="100" y="30" width="160" height="74" rx="6" fill="rgba(56, 189, 248, 0.2)" stroke="#38bdf8" strokeWidth="2" />
+        <rect x="155" y="44" width="50" height="46" rx="4" fill="#c084fc" opacity="0.8" stroke="#ffffff" strokeWidth="1.5" />
+        <path d="M180 44V20" stroke="#cbd5e1" strokeWidth="2" />
+        <circle cx="180" cy="18" r="5" fill="#f59e0b" />
+      </svg>
+    ),
+    'ohms-law': (
+      <svg viewBox="0 0 360 120" className="w-full h-full">
+        <defs>
+          <linearGradient id="ohmBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffd58a" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#ffb86a" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <rect x="8" y="8" width="344" height="104" rx="18" fill="url(#ohmBg)" />
+        <circle cx="70" cy="60" r="18" fill="#ffd58a" opacity="0.8" />
+        <rect x="108" y="50" width="86" height="20" rx="10" fill="#ffd58a" opacity="0.6" />
+        <rect x="210" y="50" width="50" height="20" rx="10" fill="#ffd58a" opacity="0.45" />
+        <path d="M260 60h60" stroke="#ffd58a" strokeWidth="6" strokeLinecap="round" />
+        <path d="M288 42l12 18-12 18" fill="#ffd58a" opacity="0.85" />
+        <circle cx="310" cy="60" r="6" fill="#fff1d6" />
+      </svg>
+    ),
   }
 
   const uniformParams = simulationParams['uniform-acceleration']
-  const ohmParams = simulationParams['ohms-law']
+  const projectileParams = simulationParams['projectile-motion']
+  const pendulumParams = simulationParams['pendulum']
+  const collisionsParams = simulationParams['collisions']
   const inclineParams = simulationParams['energy-incline']
+  const archimedesParams = simulationParams['archimedes']
+  const ohmParams = simulationParams['ohms-law']
 
   if (selectedSimulationId) {
     const selectedMeta = simulationCatalog.find((item) => item.id === selectedSimulationId)
@@ -973,15 +1053,53 @@ export function LessonPage() {
               }
             />
           )}
-          {selectedSimulationId === 'ohms-law' && (
-            <OhmsLawSimulation
+          {selectedSimulationId === 'projectile-motion' && (
+            <ProjectileMotionSimulation
               topicTitle={selectedTopic.title}
-              voltage={ohmParams.voltage}
-              resistance={ohmParams.resistance}
+              angle={projectileParams.angle}
+              v0={projectileParams.v0}
+              height={projectileParams.height}
+              g={projectileParams.g}
+              timeScale={projectileParams.timeScale}
               onParamsChange={(params) =>
                 setSimulationParams((prev) => ({
                   ...prev,
-                  'ohms-law': { ...prev['ohms-law'], ...params },
+                  'projectile-motion': { ...prev['projectile-motion'], ...params },
+                }))
+              }
+            />
+          )}
+          {selectedSimulationId === 'pendulum' && (
+            <PendulumSimulation
+              topicTitle={selectedTopic.title}
+              pendulumType={pendulumParams.type}
+              length={pendulumParams.length}
+              mass={pendulumParams.mass}
+              stiffness={pendulumParams.stiffness}
+              initDisplacement={pendulumParams.initDisplacement}
+              damping={pendulumParams.damping}
+              timeScale={pendulumParams.timeScale}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'pendulum': { ...prev['pendulum'], ...params },
+                }))
+              }
+            />
+          )}
+          {selectedSimulationId === 'collisions' && (
+            <CollisionsSimulation
+              topicTitle={selectedTopic.title}
+              m1={collisionsParams.m1}
+              v1={collisionsParams.v1}
+              m2={collisionsParams.m2}
+              v2={collisionsParams.v2}
+              elasticity={collisionsParams.elasticity}
+              timeScale={collisionsParams.timeScale}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'collisions': { ...prev['collisions'], ...params },
                 }))
               }
             />
@@ -998,6 +1116,34 @@ export function LessonPage() {
                 setSimulationParams((prev) => ({
                   ...prev,
                   'energy-incline': { ...prev['energy-incline'], ...params },
+                }))
+              }
+            />
+          )}
+          {selectedSimulationId === 'archimedes' && (
+            <ArchimedesSimulation
+              topicTitle={selectedTopic.title}
+              fluidDensity={archimedesParams.fluidDensity}
+              bodyDensity={archimedesParams.bodyDensity}
+              bodyVolume={archimedesParams.bodyVolume}
+              immersionFraction={archimedesParams.immersionFraction}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'archimedes': { ...prev['archimedes'], ...params },
+                }))
+              }
+            />
+          )}
+          {selectedSimulationId === 'ohms-law' && (
+            <OhmsLawSimulation
+              topicTitle={selectedTopic.title}
+              voltage={ohmParams.voltage}
+              resistance={ohmParams.resistance}
+              onParamsChange={(params) =>
+                setSimulationParams((prev) => ({
+                  ...prev,
+                  'ohms-law': { ...prev['ohms-law'], ...params },
                 }))
               }
             />
