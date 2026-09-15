@@ -8,7 +8,14 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { API_BASE } from '@/lib/api'
 const ADMIN_PAGE_SIZE = 100
 
-type ContentTab = 'overview' | 'lessons' | 'tests' | 'tasks' | 'formulas'
+import {
+  UserAnalyticsView,
+  type AnalyticsOverviewData,
+  type AnalyticsUsersResponse,
+  type UserDetailData,
+} from '@/components/admin/UserAnalyticsView'
+
+type ContentTab = 'overview' | 'analytics' | 'lessons' | 'tests' | 'tasks' | 'formulas'
 type LessonKind = 'sections' | 'subsections' | 'topics'
 type AdminItem = Record<string, unknown> & { id?: string; title?: string; name?: string; section_id?: string; subsection_id?: string; is_published?: boolean; lesson_kind?: LessonKind }
 
@@ -117,6 +124,7 @@ type TranslationLanguage = 'en' | 'kk'
 
 const tabs: { id: ContentTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'analytics', label: 'Аналитика пользователей' },
   { id: 'lessons', label: 'Lessons' },
   { id: 'tests', label: 'Tests' },
   { id: 'tasks', label: 'Tasks' },
@@ -1489,6 +1497,17 @@ export function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  const [analyticsOverview, setAnalyticsOverview] = useState<AnalyticsOverviewData | null>(null)
+  const [analyticsUsers, setAnalyticsUsers] = useState<AnalyticsUsersResponse | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [usersTableLoading, setUsersTableLoading] = useState(false)
+  const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetailData | null>(null)
+  const [userDetailLoading, setUserDetailLoading] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
+  const [userRoleFilter, setUserRoleFilter] = useState('')
+  const [userClassFilter, setUserClassFilter] = useState('')
+  const [userPage, setUserPage] = useState(1)
+
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedId) || null, [items, selectedId])
   const sectionOptions = useMemo(() => {
     const ids = new Set([
@@ -1598,9 +1617,64 @@ export function AdminPage() {
     }
   }
 
+  async function loadAnalytics() {
+    setAnalyticsLoading(true)
+    setError(null)
+    try {
+      const [overviewData, usersData] = await Promise.all([
+        adminFetch('/api/admin/analytics/overview'),
+        adminFetch(`/api/admin/analytics/users?page=1&limit=15${userSearch.trim() ? `&search=${encodeURIComponent(userSearch.trim())}` : ''}${userRoleFilter ? `&role=${encodeURIComponent(userRoleFilter)}` : ''}${userClassFilter ? `&class_id=${encodeURIComponent(userClassFilter)}` : ''}`),
+      ])
+      setAnalyticsOverview(overviewData)
+      setAnalyticsUsers(usersData)
+      setUserPage(1)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load analytics')
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
+
+  async function loadAnalyticsUsersPage(page: number, search = userSearch, role = userRoleFilter, classId = userClassFilter) {
+    setUsersTableLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '15',
+      })
+      if (search.trim()) params.set('search', search.trim())
+      if (role) params.set('role', role)
+      if (classId) params.set('class_id', classId)
+      const usersData = await adminFetch(`/api/admin/analytics/users?${params.toString()}`)
+      setAnalyticsUsers(usersData)
+      setUserPage(page)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load users list')
+    } finally {
+      setUsersTableLoading(false)
+    }
+  }
+
+  async function openUserDetails(userId: string) {
+    setUserDetailLoading(true)
+    setSelectedUserDetail(null)
+    try {
+      const data = await adminFetch(`/api/admin/analytics/users/${encodeURIComponent(userId)}`)
+      setSelectedUserDetail(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load user details')
+    } finally {
+      setUserDetailLoading(false)
+    }
+  }
+
   async function loadItems(tab: ContentTab, offset = 0, append = false) {
     if (tab === 'overview') {
       await loadOverview()
+      return
+    }
+    if (tab === 'analytics') {
+      await loadAnalytics()
       return
     }
 
@@ -1768,7 +1842,7 @@ export function AdminPage() {
   }
 
   async function saveItem() {
-    if (activeTab === 'overview') return
+    if (activeTab === 'overview' || activeTab === 'analytics') return
     setSaving(true)
     setError(null)
     setNotice(null)
@@ -1827,7 +1901,7 @@ export function AdminPage() {
   }
 
   async function deleteItem() {
-    if (activeTab === 'overview' || !selectedItem?.id) return
+    if (activeTab === 'overview' || activeTab === 'analytics' || !selectedItem?.id) return
     const shouldDelete = window.confirm(`Delete ${itemTitle(selectedItem)}? This cannot be undone.`)
     if (!shouldDelete) return
 
@@ -1900,7 +1974,45 @@ export function AdminPage() {
         {error && <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">{error}</div>}
         {notice && <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">{notice}</div>}
 
-        {activeTab === 'overview' ? (
+        {activeTab === 'analytics' ? (
+          <UserAnalyticsView
+            overview={analyticsOverview}
+            usersData={analyticsUsers}
+            loading={analyticsLoading}
+            usersTableLoading={usersTableLoading}
+            selectedUserDetail={selectedUserDetail}
+            userDetailLoading={userDetailLoading}
+            searchQuery={userSearch}
+            roleFilter={userRoleFilter}
+            classFilter={userClassFilter}
+            currentPage={userPage}
+            theme={theme}
+            onSearchChange={(val) => {
+              setUserSearch(val)
+              void loadAnalyticsUsersPage(1, val, userRoleFilter, userClassFilter)
+            }}
+            onRoleFilterChange={(val) => {
+              setUserRoleFilter(val)
+              void loadAnalyticsUsersPage(1, userSearch, val, userClassFilter)
+            }}
+            onClassFilterChange={(val) => {
+              setUserClassFilter(val)
+              void loadAnalyticsUsersPage(1, userSearch, userRoleFilter, val)
+            }}
+            onPageChange={(page) => {
+              void loadAnalyticsUsersPage(page, userSearch, userRoleFilter, userClassFilter)
+            }}
+            onViewUserDetails={(userId) => {
+              void openUserDetails(userId)
+            }}
+            onCloseUserDetails={() => {
+              setSelectedUserDetail(null)
+            }}
+            onRefresh={() => {
+              void loadAnalytics()
+            }}
+          />
+        ) : activeTab === 'overview' ? (
           loading ? (
             <div className="rounded-3xl bg-white/80 p-8 text-center font-bold text-slate-500 shadow-xl dark:bg-slate-900/70 dark:text-slate-300">Loading admin data...</div>
           ) : overview ? (
